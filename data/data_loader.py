@@ -59,7 +59,9 @@ class HistoricData:
         self._load_odds()
 
     def _load_event_data(self):
-        event_data = self.ws.read_events(list(self.schedule.ws_game_id))
+        event_data = self.ws.read_events(
+            list(self.schedule.ws_game_id), output_fmt="spadl"
+        )
 
         logging.info("SPADL Data Loaded")
         event_data.merge(
