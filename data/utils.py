@@ -1,7 +1,74 @@
-import xgboost
 import pandas as pd
 from socceraction import spadl
 from tqdm import tqdm
+import xgboost
+import socceraction.vaep.features as fs
+import socceraction.vaep.labels as lab
+import socceraction.vaep.formula as vaepformula
+
+
+def get_vaep_data(spadldf):
+    gamestates = fs.gamestates(spadldf, 3)
+    xfns = [
+        fs.actiontype_onehot,
+        fs.result_onehot,
+        fs.bodypart_onehot,
+        fs.startlocation,
+        fs.endlocation,
+        fs.startpolar,
+        fs.endpolar,
+        fs.movement,
+        fs.time_delta,
+        fs.space_delta,
+        fs.goalscore,
+        fs.time,
+    ]
+
+    yfns = [lab.scores, lab.concedes]
+
+    X = pd.concat([fn(gamestates) for fn in xfns], axis=1)
+    y = pd.concat([fn(spadldf) for fn in yfns], axis=1)
+
+    return X, y
+
+
+def train_vaep(X, y):
+    pscores = ProbabityModel(
+        model=xgboost.XGBClassifier(
+            n_estimators=50, max_depth=3, n_jobs=-3, verbosity=1
+        ),
+        model_type="classifier",
+    )
+    pscores.train(X, y[["scores"]])
+
+    pconcedes = ProbabityModel(
+        model=xgboost.XGBClassifier(
+            n_estimators=50, max_depth=3, n_jobs=-3, verbosity=1
+        ),
+        model_type="classifier",
+    )
+    pconcedes.train(X, y[["concedes"]])
+
+    return pscores, pconcedes
+
+
+def get_vaep_values(spadldf, X, pscores, pconcedes):
+    models = {"scores": pscores, "concedes": pconcedes}
+
+    y_hat = pd.DataFrame(columns=["scores", "concedes"])
+
+    for col in ["scores", "concedes"]:
+        y_hat[col] = models[col].predict(X)
+
+    return vaepformula.value(spadldf, y_hat["scores"], y_hat["concedes"])
+
+
+def get_vaep(spadldf):
+    print("Calculating Features for VAEP")
+    X, y = get_vaep_data(spadldf)
+    print("Training Model for VAEP")
+    pscores, pconcedes = train_vaep(X, y)
+    return get_vaep_values(spadldf, X, pscores, pconcedes)
 
 
 def get_match_possessions(sample):
@@ -104,9 +171,6 @@ class ProbabityModel:
         X: pd.DataFrame,
         y: pd.DataFrame,
     ):
-        # all = pd.merge(X, y, on=["game_id", "action_id"], how="inner")
-        # y = all[y.columns.difference(["game_id", "action_id"])]
-        # X = all[X.columns.difference(["game_id", "action_id"])]
 
         self.model.fit(X.values, y.values)
         self.trained = True
@@ -115,7 +179,6 @@ class ProbabityModel:
         self,
         X: pd.DataFrame,
     ):
-        # X = X[X.columns.difference(["game_id", "action_id"])]
 
         if not self.trained:
             raise ValueError("Model not trained")

@@ -6,7 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 
 
-class xg:
+class xG:
     def __init__(self, spadldata: pd.DataFrame):
 
         self.features_calculated = False
