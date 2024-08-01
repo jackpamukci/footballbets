@@ -61,10 +61,13 @@ class HistoricData:
     def _load_event_data(self):
         event_data = self.ws.read_events(list(self.schedule.ws_game_id))
 
-        # event_data = spadl.add_names(event_data)
-
         logging.info("SPADL Data Loaded")
-
+        event_data.merge(
+            self.schedule[["game", "home_team_id", "ws_game_id"]],
+            how="left",
+            left_on="game_id",
+            right_on="ws_game_id",
+        )
         spadl_buffer = StringIO()
 
         event_data.to_csv(spadl_buffer, index=True)
@@ -158,17 +161,16 @@ class HistoricData:
         logging.info("Team Match Stats Into S3")
 
     def _get_master_schedule(self):
-        epl_schedule = self.ws.read_schedule()
-        fbref_schedule = self.fbref.read_schedule()
-        understat_schedule = self.understat.read_schedule()
+        epl_schedule = self.ws.read_schedule().reset_index()
+        fbref_schedule = self.fbref.read_schedule().reset_index()
+        understat_schedule = self.understat.read_schedule().reset_index()
 
         master_schedule = epl_schedule.merge(
-            fbref_schedule[["game_id"]], left_index=True, right_index=True, how="inner"
+            fbref_schedule[["game", "game_id"]], on="game", how="left"
         )
         master_schedule = master_schedule.merge(
-            understat_schedule[["game_id"]],
-            left_index=True,
-            right_index=True,
+            understat_schedule[["game", "game_id"]],
+            on="game",
             how="left",
         )
 
@@ -181,7 +183,7 @@ class HistoricData:
             inplace=True,
         )
 
-        master_schedule = master_schedule.reset_index().set_index("game")
+        master_schedule = master_schedule.reset_index()
 
         schedule_match = StringIO()
         master_schedule.to_csv(schedule_match, index=True)
@@ -258,13 +260,15 @@ def main_menu(stdscr, options):
 
             stdscr.addstr(0, 0, f"You entered: {int_code}")
             stdscr.refresh()
-
-            stdscr.addstr(15, 0, "Enter number of games: ")
-            curses.echo()  # Enable echoing of typed characters
-            num_games = stdscr.getstr(
-                16, 0, 20
-            )  # Get user input, max length of 20 characters
-            num_games = int(num_games.decode("utf-8"))
+            try:
+                stdscr.addstr(15, 0, "Enter number of games: ")
+                curses.echo()  # Enable echoing of typed characters
+                num_games = stdscr.getstr(
+                    16, 0, 20
+                )  # Get user input, max length of 20 characters
+                num_games = int(num_games.decode("utf-8"))
+            except ValueError:
+                num_games = 380
 
             return selected_option, int_code, num_games
 
@@ -281,9 +285,8 @@ def main():
     print(f"You entered: {selected_season}")
 
     print("Starting web scraper...")
-    HistoricData(
-        season_id=selected_season, league_id=selected_league, num_games=num_games
-    )
+
+    HistoricData(season_id=selected_season, league_id=selected_league, num_games=380)
 
 
 if __name__ == "__main__":
