@@ -1,0 +1,12 @@
+{
+    "Tottenham": ["Tottenham Hotspur", "Tottenham Hotspur FC", "Spurs"],
+    "Newcastle": ["Newcastle Utd", "Newcastle United"],
+    "Sheffield United": ["Sheffield Utd"],
+    "Manchester United": ["Man United", "Manchester Utd", "Man U", "Man Utd"],
+    "Nottingham Forest": ["Nott'ham Forest", "Nott'm Forest"], 
+    "Manchester City": ["Man City"],
+    "Luton": ["Luton Town"],
+    "Wolves": ["Wolverhampton Wanderers"],
+    "Leicester" : ["Leicester City"],
+    "Leeds": ["Leeds United", "Leeds Utd"]
+}
