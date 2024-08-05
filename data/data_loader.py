@@ -50,8 +50,9 @@ class HistoricData:
 
         self.understat = sd.Understat(leagues=self.league_id, seasons=self.season_id)
 
-        self.schedule = self._get_master_schedule().iloc[:num_games]
+        self.schedule = self._get_league_schedule().iloc[:num_games]
 
+        self._load_europe_schedule()
         self._load_event_data()
         self._load_missing_players()
         self._load_player_match_stats()
@@ -163,7 +164,7 @@ class HistoricData:
 
         logging.info("Team Match Stats Into S3")
 
-    def _get_master_schedule(self):
+    def _get_league_schedule(self):
         epl_schedule = self.ws.read_schedule().reset_index()
         fbref_schedule = self.fbref.read_schedule().reset_index()
         understat_schedule = self.understat.read_schedule().reset_index()
@@ -188,8 +189,6 @@ class HistoricData:
 
         master_schedule = master_schedule.reset_index()
 
-        # europe_schedule = get_european_schedule(self.season_id)
-
         schedule_match = StringIO()
         master_schedule.to_csv(schedule_match, index=True)
         self.s3.put_object(
@@ -199,6 +198,16 @@ class HistoricData:
         )
 
         return master_schedule
+
+    def _load_europe_schedule(self):
+        europe = get_european_schedule(self.season_id)
+        schedule_match = StringIO()
+        europe.to_csv(schedule_match, index=True)
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=f"European_Schedules/{self.season_id}_schedule.csv",
+            Body=schedule_match.getvalue(),
+        )
 
     def _create_session(self, env_path: str):
 
@@ -291,7 +300,9 @@ def main():
 
     print("Starting web scraper...")
 
-    HistoricData(season_id=selected_season, league_id=selected_league, num_games=380)
+    HistoricData(
+        season_id=selected_season, league_id=selected_league, num_games=num_games
+    )
 
 
 if __name__ == "__main__":

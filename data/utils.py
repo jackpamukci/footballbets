@@ -10,10 +10,10 @@ import os
 import requests
 import io
 import numpy as np
-import datetime
+from datetime import datetime
 
 current_directory = os.getcwd()
-parent_directory = os.path.dirname(os.path.dirname(current_directory))
+parent_directory = os.path.dirname(current_directory)
 sys.path.append(parent_directory)
 import _config
 
@@ -190,8 +190,6 @@ def get_european_schedule(season):
 
     team_cols = ["Home Team", "Away Team"]
     europe[team_cols] = europe[team_cols].replace(TEAMNAME_REPLACEMENTS)
-    # pl_teams = list(schedule.home_team.unique())
-    # europe = europe[(europe['Home Team'].isin(pl_teams)) | (europe['Away Team'].isin(pl_teams))]
 
     europe["date"] = europe.Date.apply(lambda x: str(x).split(" ")[0])
     europe["date"] = europe.date.apply(
@@ -212,7 +210,7 @@ def get_european_schedule(season):
     nul_cols = SCHEDULE_COLUMNS.difference(cols_to_keep)
 
     europe = europe.drop(europe.columns.difference(cols_to_keep), axis=1)
-    europe[nul_cols] = np.nan
+    europe[list(nul_cols)] = np.nan
 
     return europe
 
