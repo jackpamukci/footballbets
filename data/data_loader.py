@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from io import StringIO
 import os
 import curses
+from utils import get_european_schedule
 
 supported_leagues = [
     "ENG-Premier League",
@@ -186,6 +187,8 @@ class HistoricData:
         )
 
         master_schedule = master_schedule.reset_index()
+
+        # europe_schedule = get_european_schedule(self.season_id)
 
         schedule_match = StringIO()
         master_schedule.to_csv(schedule_match, index=True)
