@@ -199,16 +199,6 @@ class HistoricData:
 
         return master_schedule
 
-    def _load_europe_schedule(self):
-        europe = get_european_schedule(self.season_id)
-        schedule_match = StringIO()
-        europe.to_csv(schedule_match, index=True)
-        self.s3.put_object(
-            Bucket=self.bucket,
-            Key=f"European_Schedules/{self.season_id}_schedule.csv",
-            Body=schedule_match.getvalue(),
-        )
-
     def _create_session(self, env_path: str):
 
         load_dotenv(env_path)

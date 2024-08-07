@@ -1,4 +1,5 @@
 import curses
+from data.utils import get_european_schedule
 
 
 def main_menu(stdscr, options):
@@ -48,22 +49,24 @@ def main_menu(stdscr, options):
 
 
 def main():
-    supported_leagues = [
-        "ENG-Premier League",
-        "ESP-La Liga",
-        "FRA-Ligue 1",
-        "GER-Bundesliga",
-        "ITA-Serie A",
-    ]
+    # supported_leagues = [
+    #     "ENG-Premier League",
+    #     "ESP-La Liga",
+    #     "FRA-Ligue 1",
+    #     "GER-Bundesliga",
+    #     "ITA-Serie A",
+    # ]
 
-    # Initialize curses and show the menu
-    selected_option, int_code = curses.wrapper(main_menu, supported_leagues)
-    print(f"You selected: {selected_option}")
+    # # Initialize curses and show the menu
+    # selected_option, int_code = curses.wrapper(main_menu, supported_leagues)
+    # print(f"You selected: {selected_option}")
 
-    # Ask for an integer input
-    print(f"You entered: {int_code}")
+    # # Ask for an integer input
+    # print(f"You entered: {int_code}")
 
-    print("Starting web scraper...")
+    # print("Starting web scraper...")
+    print(get_european_schedule(1718))
+    return
 
 
 if __name__ == "__main__":

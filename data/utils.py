@@ -174,6 +174,9 @@ def get_european_schedule(season):
 
     for league in ["europa", "champions"]:
 
+        if season_id in ["2017", "2018"] and league == "europa":
+            continue
+
         headers = {
             "Cookies": "_ga_DTCKHDGKYF=GS1.1.1722868866.6.1.1722869089.0.0.0; _ga=GA1.2.1274569263.1721488882; ARRAffinity=3587c3b28f299ba120e848a3ba122803c40823fd58ac197de099244cf70e116d; ARRAffinitySameSite=3587c3b28f299ba120e848a3ba122803c40823fd58ac197de099244cf70e116d; _gid=GA1.2.1211098860.1722868867; Timezone=Eastern Standard Time",
             "Referer": f"https://fixturedownload.com/download/csv/{league}-league-{season_id}",
@@ -198,7 +201,7 @@ def get_european_schedule(season):
     europe["time"] = europe.Date.apply(lambda x: str(x).split(" ")[1])
     europe["time"] = europe.time.apply(lambda x: datetime.strptime(x, "%H:%M").time())
 
-    europe["season"] = 2223
+    europe["season"] = season
 
     europe["game"] = europe.apply(
         lambda x: f"{x.date} {x['Home Team']}-{x['Away Team']}", axis=1
