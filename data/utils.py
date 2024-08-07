@@ -11,6 +11,9 @@ import requests
 import io
 import numpy as np
 from datetime import datetime
+from geopy.distance import geodesic
+import Levenshtein
+
 
 current_directory = os.getcwd()
 parent_directory = os.path.dirname(current_directory)
@@ -216,6 +219,33 @@ def get_european_schedule(season):
     europe[list(nul_cols)] = np.nan
 
     return europe
+
+
+def get_distances(schedule):
+    STADIUM_LOCATIONS = _config.STADIUM_LOCATIONS
+    schedule["distance"] = schedule.apply(
+        lambda x: geodesic(
+            tuple(STADIUM_LOCATIONS[x.home_team]), tuple(STADIUM_LOCATIONS[x.away_team])
+        ).kilometers,
+        axis=1,
+    )
+
+
+def levenshtein_similarity(s1, s2):
+    distance = Levenshtein.distance(s1, s2)
+    max_len = max(len(s1), len(s2))
+    return 1 - (distance / max_len)
+
+
+def best_name_match(target, strings):
+    best_score = -1
+    best_string = None
+    for s in strings:
+        score = levenshtein_similarity(target, s)
+        if score > best_score:
+            best_score = score
+            best_string = s
+    return best_string
 
 
 class ProbabityModel:

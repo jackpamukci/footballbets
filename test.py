@@ -1,5 +1,5 @@
 import curses
-from data.utils import get_european_schedule
+from data.events import Events
 
 
 def main_menu(stdscr, options):
@@ -65,7 +65,7 @@ def main():
     # print(f"You entered: {int_code}")
 
     # print("Starting web scraper...")
-    print(get_european_schedule(1718))
+    print(Events("ENG-Premier League", 2223).schedule.distance.max())
     return
 
 
