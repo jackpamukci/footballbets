@@ -1,6 +1,4 @@
 import soccerdata as sd
-
-# import socceraction.spadl as spadl
 import pandas as pd
 from tqdm import tqdm
 import logging
@@ -52,7 +50,7 @@ class HistoricData:
 
         self.schedule = self._get_league_schedule().iloc[:num_games]
 
-        self._load_europe_schedule()
+        # self._load_europe_schedule()
         self._load_event_data()
         self._load_missing_players()
         self._load_player_match_stats()
