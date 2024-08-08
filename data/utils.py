@@ -86,64 +86,78 @@ def get_vaep(spadldf):
 
 
 def get_match_possessions(sample):
+    sample = sample.copy()  # To avoid modifying the original dataframe
+
+    # Shift operations
     next_event = sample.shift(-1, fill_value=0)
     sample["nextEvent"] = next_event["type_name"]
-    sample["kickedOut"] = sample.apply(
-        lambda x: 1 if x["nextEvent"] in ["throw_in", "goalkick"] else 0, axis=1
-    )
-
     sample["nextTeamId"] = next_event["team_id"]
-    chain_team = sample.iloc[0]["team_id"]
-    period = sample.iloc[0]["period_id"]
+
+    # Determine 'kickedOut' column
+    sample["kickedOut"] = sample["nextEvent"].isin(["throw_in", "goalkick"]).astype(int)
+
+    # Convert columns to numpy arrays for faster access
+    type_name = sample["type_name"].values
+    result_name = sample["result_name"].values
+    team_id = sample["team_id"].values
+    next_event_type = sample["nextEvent"].values
+    next_team_id = sample["nextTeamId"].values
+    period_id = sample["period_id"].values
+    kicked_out = sample["kickedOut"].values
+
+    # Initialize arrays
+    possession_chain = np.zeros(len(sample), dtype=int)
+    possession_chain_team = np.zeros(len(sample), dtype=int)
+
+    chain_team = team_id[0]
+    period = period_id[0]
 
     stop_criterion = 0
     chain = 0
-    sample["possession_chain"] = 0
-    sample["possession_chain_team"] = 0
 
-    for i, row in sample.iterrows():
-        sample.at[i, "possession_chain"] = chain
-        sample.at[i, "possession_chain_team"] = chain_team
+    for i in range(len(sample)):
+        possession_chain[i] = chain
+        possession_chain_team[i] = chain_team
 
-        if row.type_name in ["pass", "duel", "take_on", "dribble"]:
-
-            if row["result_name"] == "fail":
-                if row.nextEvent == "interception" or row.nextEvent == "tackle":
+        if type_name[i] in ["pass", "duel", "take_on", "dribble"]:
+            if result_name[i] == "fail":
+                if next_event_type[i] in ["interception", "tackle"]:
                     stop_criterion += 2
                 else:
                     stop_criterion += 1
 
-            if row.team_id != row.nextTeamId:
-                if (
-                    row.nextEvent == "dribble"
-                    or row.nextEvent == "pass"
-                    or row.nextEvent == "tackle"
-                ):
+            if team_id[i] != next_team_id[i]:
+                if next_event_type[i] in ["dribble", "pass", "tackle"]:
                     stop_criterion += 2
 
-        if row.type_name == "bad_touch" and row.team_id != row.nextTeamId:
+        if type_name[i] == "bad_touch" and team_id[i] != next_team_id[i]:
             stop_criterion += 2
 
-        if row.type_name in ["pass", "cross", "freekick_crossed", "corner_crossed"]:
-            if row.result_name == "offside":
-                stop_criterion += 2
-        if row.type_name in ["shot", "foul", "clearance"]:
+        if (
+            type_name[i] in ["pass", "cross", "freekick_crossed", "corner_crossed"]
+            and result_name[i] == "offside"
+        ):
             stop_criterion += 2
-        if row["kickedOut"] == 1:
+        if type_name[i] in ["shot", "foul", "clearance"]:
+            stop_criterion += 2
+        if kicked_out[i] == 1:
             stop_criterion += 2
 
-        if row["period_id"] != period:
+        if period_id[i] != period:
             chain += 1
             stop_criterion = 0
-            chain_team = row["team_id"]
-            period = row["period_id"]
-            sample.at[i, "possession_chain"] = chain
-            sample.at[i, "possession_chain_team"] = chain_team
+            chain_team = team_id[i]
+            period = period_id[i]
+            possession_chain[i] = chain
+            possession_chain_team[i] = chain_team
 
         if stop_criterion >= 2:
             chain += 1
             stop_criterion = 0
-            chain_team = row["nextTeamId"]
+            chain_team = next_team_id[i]
+
+    sample["possession_chain"] = possession_chain
+    sample["possession_chain_team"] = possession_chain_team
 
     return sample
 

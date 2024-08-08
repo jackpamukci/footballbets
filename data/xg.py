@@ -195,12 +195,10 @@ class xG:
             False,
         )
 
-        # Takes long time
-        spadldf["play_type"] = None
-        grouped = spadldf.groupby("possession_chain")
-        for name, group in tqdm(grouped, desc="Calculating play types"):
-            play_type = self._calculate_play_type(group)
-            spadldf.loc[group.index, "play_type"] = play_type
+        # Takes long time (cut down to 12 seconds from 60)
+        # spadldf["play_type"] = None
+
+        spadldf = self._calculate_play_type(spadldf)
 
         self.features_calculated = True
         return spadldf
@@ -244,35 +242,49 @@ class xG:
             print(f"ValueError: {e}")
             return None
 
-    def _calculate_play_type(self, group):
-        first_event = group.iloc[0]
-        highest_x_event = group.loc[group["start_x"].idxmax()]
+    def _calculate_play_type(self, spadldf):
+        spadldf = spadldf.copy()  # To avoid modifying the original dataframe
 
-        if first_event.type_name in [
+        # Initialize play_type column
+        spadldf["play_type"] = "normal"
+
+        # Group by possession_chain
+        grouped = spadldf.groupby("possession_chain")
+
+        # Pre-calculate conditions and masks
+        type_name = spadldf["type_name"].values
+        start_x = spadldf["start_x"].values
+        time_seconds = spadldf["time_seconds"].values
+
+        specific_play_types = [
             "goalkick",
             "freekick_short",
             "freekick_crossed",
             "corner_crossed",
             "corner_short",
-        ]:
-            return first_event.type_name.split("_")[0]
+        ]
 
-        if (
-            (highest_x_event.time_seconds - first_event.time_seconds < 13)
-            and (highest_x_event.start_x > 85)
-            and (first_event.start_x < 55)
-            and (
-                first_event.type_name
-                not in [
-                    "goalkick",
-                    "freekick_short",
-                    "freekick_crossed",
-                    "foul",
-                    "corner_crossed",
-                    "corner_short",
-                ]
-            )
-        ):
-            return "counter"
+        for name, group in tqdm(grouped, desc="Calculating play types"):
+            group_indices = group.index
+            first_event_idx = group_indices[0]
+            highest_x_event_idx = group["start_x"].idxmax()
 
-        return "normal"
+            first_event_type_name = type_name[first_event_idx]
+            first_event_start_x = start_x[first_event_idx]
+            first_event_time_seconds = time_seconds[first_event_idx]
+
+            highest_x_event_time_seconds = time_seconds[highest_x_event_idx]
+            highest_x_event_start_x = start_x[highest_x_event_idx]
+
+            if first_event_type_name in specific_play_types:
+                play_type = first_event_type_name.split("_")[0]
+                spadldf.loc[group_indices, "play_type"] = play_type
+            elif (
+                (highest_x_event_time_seconds - first_event_time_seconds < 13)
+                and (highest_x_event_start_x > 85)
+                and (first_event_start_x < 55)
+                and (first_event_type_name not in specific_play_types + ["foul"])
+            ):
+                spadldf.loc[group_indices, "play_type"] = "counter"
+
+        return spadldf
