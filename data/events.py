@@ -118,6 +118,32 @@ class Events:
         )
         odds = pd.read_csv(StringIO(s3_odds["Body"].read().decode("utf-8")))
 
+        non_odds = odds.columns[:6]
+        odd_nums = [
+            "B365>2.5",
+            "B365<2.5",
+            "P>2.5",
+            "P<2.5",
+            "B365H",
+            "B365D",
+            "B365A",
+            "PSH",
+            "PSD",
+            "PSA",
+            "Max>2.5",
+            "Max<2.5",
+            "Avg>2.5",
+            "Avg<2.5",
+            "MaxH",
+            "MaxD",
+            "MaxA",
+            "AvgH",
+            "AvgD",
+            "AvgA",
+        ]
+        cols = list(non_odds) + odd_nums
+        odds = odds[cols]
+
         s3_player_stats = self.s3.get_object(
             Bucket=self.bucket,
             Key=f"{self.league_id}/{self.season_id}/player_stats.csv",
