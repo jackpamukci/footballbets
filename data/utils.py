@@ -244,6 +244,8 @@ def get_distances(schedule):
         axis=1,
     )
 
+    return schedule
+
 
 def levenshtein_similarity(s1, s2):
     distance = Levenshtein.distance(s1, s2)

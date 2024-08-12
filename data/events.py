@@ -6,7 +6,6 @@ from io import StringIO
 import socceraction.spadl as spadl
 from data import utils
 from data.xg import xG
-import logging
 from geopy.distance import geodesic
 
 
@@ -25,22 +24,22 @@ class Events:
         self.env_path = env_path
         self._get_s3_agent()
 
-        logging.info("Loading Data Now from S3")
         _data = self._load_data()
+        print("events")
         self.events = _data["events"]
-        logging.info("Events Loaded")
+        print("lineup")
         self.lineups = _data["lineups"]
-        logging.info("Lineups Loaded")
         self.missing_players = _data["missing_players"]
         self.odds = _data["odds"]
         self.player_stats = _data["player_stats"]
         self.schedule = _data["schedule"]
         self.team_stats = _data["team_stats"]
 
-        logging.info("Processing Event Data Now")
-        # self._process_event_data()
+        print("process data")
+        self._process_event_data()
+        print("schdule")
         self._process_schedule(get_dist=True)
-        self._process_player_names()
+        # self._process_player_names()
 
     def _process_event_data(self):
         self.events = spadl.add_names(self.events)
@@ -58,14 +57,11 @@ class Events:
         self.events["nextEvent"] = self.events.shift(-1, fill_value=0)["type_name"]
         self.events["nextTeamId"] = self.events.shift(-1, fill_value=0)["team_id"]
 
-        logging.info("Getting possessions from season")
         self.events = utils.get_season_possessions(self.events)
 
-        logging.info("Getting xG")
         xgm = xG(self.events)
         self.events["xG"] = xgm.get_xg()
 
-        logging.info("Getting VAEP")
         self.events = pd.concat([self.events, utils.get_vaep(self.events)], axis=1)
 
     def _process_schedule(self, get_dist=False):

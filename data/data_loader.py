@@ -168,7 +168,7 @@ class HistoricData:
         understat_schedule = self.understat.read_schedule().reset_index()
 
         master_schedule = epl_schedule.merge(
-            fbref_schedule[["game", "game_id"]], on="game", how="left"
+            fbref_schedule[["game", "game_id", "week"]], on="game", how="left"
         )
         master_schedule = master_schedule.merge(
             understat_schedule[["game", "game_id"]],
