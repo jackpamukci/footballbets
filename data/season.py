@@ -9,7 +9,7 @@ from data.xg import xG
 from geopy.distance import geodesic
 
 
-class Events:
+class Season:
     def __init__(
         self,
         league_id: str,
@@ -51,6 +51,10 @@ class Events:
             how="left",
             left_on="game_id",
             right_on="ws_game_id",
+        )
+
+        self.events["h.a"] = self.events.apply(
+            lambda x: "home" if x.team_id == x.home_team_id else "away", axis=1
         )
 
         self.events["prevEvent"] = self.events.shift(1, fill_value=0)["type_name"]

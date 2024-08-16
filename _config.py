@@ -2,10 +2,10 @@ import os
 import sys
 from pathlib import Path
 import json
-import logger
+import logging
 
 sys.path.append("..")
-BASE_DIR = Path(os.environ.get("SOCCERDATA_DIR", Path.home() / "soccerdata"))
+BASE_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = Path(BASE_DIR, "config")
 
 # Team name replacements
