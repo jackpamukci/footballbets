@@ -124,7 +124,7 @@ class TeamFeatures:
                             )
                         else:
                             value = self._calculate_last_performances(
-                                lookback_matches, metric, ind
+                                lookback_matches, metric, row, ind
                             )
                         feats.at[i, f"last_{self.lookback}_{ind}_{metric}"] = value
 
@@ -145,19 +145,24 @@ class TeamFeatures:
             lookback_matches.iloc[0].date, "%Y-%m-%d %H:%M:%S"
         )
 
-        if metric.split("_")[-2] == "conceded":
-            indicator = "away" if ind == "home" else "home"
-            metric_name = "_".join(metric.split("_")[:-2])
-        else:
-            indicator = "home" if ind == "home" else "away"
-            metric_name = "_".join(metric.split("_")[:-1])
-
         for _, match_row in lookback_matches.iterrows():
             date_diff = (
                 datetime.strptime(match_row.date, "%Y-%m-%d %H:%M:%S") - first_date
             )
             x_val = abs(date_diff.days)
+
+            if metric.split("_")[-2] == "conceded":
+                indicator = (
+                    "home" if row[f"{ind}_team"] == match_row.away_team else "away"
+                )
+                metric_name = "_".join(metric.split("_")[:-2])
+            else:
+                indicator = (
+                    "home" if row[f"{ind}_team"] == match_row.home_team else "away"
+                )
+                metric_name = "_".join(metric.split("_")[:-1])
             y_val = match_row[f"{indicator}_{metric_name}"]
+
             points.append((x_val, y_val))
 
         x_values = np.array([x for x, y in points])
@@ -181,15 +186,20 @@ class TeamFeatures:
 
         return statistics.mean(metric_perf) if len(metric_perf) > 0 else 0
 
-    def _calculate_last_performances(self, lookback_matches, metric, ind):
+    def _calculate_last_performances(self, lookback_matches, metric, row, ind):
         metric_perf = []
         for _, match_row in lookback_matches.iterrows():
             if metric.endswith("conceded"):
-                indicator = "away" if ind == "home" else "home"
+                indicator = (
+                    "home" if row[f"{ind}_team"] == match_row.away_team else "away"
+                )
                 metric_name = "_".join(metric.split("_")[:-1])
                 metric_perf.append(match_row[f"{indicator}_{metric_name}"])
             else:
-                metric_perf.append(match_row[f"{ind}_{metric}"])
+                indicator = (
+                    "home" if row[f"{ind}_team"] == match_row.home_team else "away"
+                )
+                metric_perf.append(match_row[f"{indicator}_{metric}"])
 
         return statistics.mean(metric_perf) if len(metric_perf) > 0 else 0
 
