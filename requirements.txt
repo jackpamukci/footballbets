@@ -1,7 +1,6 @@
 boto3
 python-dotenv
 socceraction
-soccerdata
 geopy
 python-levenshtein
 pandas
