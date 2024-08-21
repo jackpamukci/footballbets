@@ -69,6 +69,7 @@ class TeamFeatures:
             "ppda",
             "home_ppda",
             "away_ppda",
+            "points",
         ],
     ):
 
