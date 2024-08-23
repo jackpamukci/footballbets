@@ -278,19 +278,17 @@ def main_menu(stdscr, options):
 def main():
 
     # Initialize curses and show the menu
-    selected_league, selected_season, num_games = curses.wrapper(
-        main_menu, supported_leagues
-    )
-    print(f"You selected: {selected_league}")
+    # selected_league, selected_season, num_games = curses.wrapper(
+    #     main_menu, supported_leagues
+    # )
+    # print(f"You selected: {selected_league}")
 
-    # Ask for an integer input
-    print(f"You entered: {selected_season}")
+    # # Ask for an integer input
+    # print(f"You entered: {selected_season}")
 
-    print("Starting web scraper...")
-
-    HistoricData(
-        season_id=selected_season, league_id=selected_league, num_games=num_games
-    )
+    # print("Starting web scraper...")
+    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+        HistoricData(season_id=season, league_id="ENG-Premier League")
 
 
 if __name__ == "__main__":
