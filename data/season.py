@@ -6,7 +6,7 @@ from io import StringIO
 import socceraction.spadl as spadl
 from data import utils
 from data.xg import xG
-from geopy.distance import geodesic
+import numpy as np
 
 
 class Season:
@@ -14,6 +14,7 @@ class Season:
         self,
         league_id: str,
         season_id: int,
+        get_dist: bool = False,
         env_path: str = None,
         bucket: str = "footballbets",
     ):
@@ -38,7 +39,7 @@ class Season:
         print("process data")
         self._process_event_data()
         print("schdule")
-        self._process_schedule(get_dist=True)
+        self._process_schedule(get_dist=get_dist)
         # self._process_player_names()
 
     def _process_event_data(self):
@@ -73,11 +74,17 @@ class Season:
         if get_dist == True:
             self.schedule = utils.get_distances(self.schedule)
 
-        europe = utils.get_european_schedule(self.season_id)
+        s3_europe = self.s3.get_object(
+            Bucket=self.bucket,
+            Key=f"European_Schedules/{self.season_id}_schedule.csv",
+        )
+        europe = pd.read_csv(StringIO(s3_europe["Body"].read().decode("utf-8")))
 
         self.schedule = pd.concat(
             [self.schedule, europe], ignore_index=True
         ).sort_values("start_time")
+
+        self.schedule = self._get_rest_days()
 
     def _process_player_names(self):
         player_list = self.lineups.player.unique()
@@ -90,6 +97,58 @@ class Season:
         # self.events["player"] = self.events.player.apply(
         #     lambda x: utils.best_name_match(x, player_list)
         # )
+
+    def _get_rest_days(self):
+        schedule = self.schedule
+        league = self.league_id
+
+        # For filtering out european fixtures from schedule
+        teams = schedule[schedule["league"] == league].home_team.unique()
+
+        schedule["home_rest"] = np.nan
+        schedule["away_rest"] = np.nan
+
+        for team in teams:
+            # Filter the schedule for the specific team (either home or away)
+            team_sched = schedule[
+                (schedule["home_team"] == team) | (schedule["away_team"] == team)
+            ].sort_values("start_time", ascending=True)
+            team_sched["previous_match_start"] = team_sched.shift(
+                1, fill_value=team_sched.iloc[0].start_time
+            )["start_time"]
+
+            # Calculate the previous match start time
+            schedule.loc[team_sched.index, "previous_match_start"] = team_sched[
+                "start_time"
+            ].shift(1, fill_value=team_sched.iloc[0].start_time)
+
+            # Convert start_time to start_date and previous_match_start to previous_match_date
+            schedule.loc[team_sched.index, "start_date"] = team_sched[
+                "start_time"
+            ].apply(lambda x: pd.to_datetime(str(x).split("T")[0]))
+            schedule.loc[team_sched.index, "previous_match_date"] = team_sched[
+                "previous_match_start"
+            ].apply(lambda x: pd.to_datetime(str(x).split("T")[0]))
+
+            home_condition = team_sched["home_team"] == team
+            schedule.loc[team_sched.index[home_condition], "home_rest"] = (
+                schedule.loc[team_sched.index[home_condition], "start_date"]
+                - schedule.loc[team_sched.index[home_condition], "previous_match_date"]
+            ).dt.days
+
+            # Calculate away rest days where the team is the away team
+            away_condition = team_sched["away_team"] == team
+            schedule.loc[team_sched.index[away_condition], "away_rest"] = (
+                schedule.loc[team_sched.index[away_condition], "start_date"]
+                - schedule.loc[team_sched.index[away_condition], "previous_match_date"]
+            ).dt.days
+
+        schedule = schedule.reset_index(drop=True).sort_values(
+            "start_time", ascending=True
+        )
+        schedule = schedule[schedule["league"] == league]
+
+        return schedule
 
     def _load_data(self):
         s3_events = self.s3.get_object(

@@ -167,6 +167,8 @@ class HistoricData:
         fbref_schedule = self.fbref.read_schedule().reset_index()
         understat_schedule = self.understat.read_schedule().reset_index()
 
+        european_schedule = get_european_schedule(self.season_id)
+
         master_schedule = epl_schedule.merge(
             fbref_schedule[["game", "game_id", "week"]], on="game", how="left"
         )
@@ -193,6 +195,14 @@ class HistoricData:
             Bucket=self.bucket,
             Key=f"{self.league_id}/{self.season_id}/schedule.csv",
             Body=schedule_match.getvalue(),
+        )
+
+        europe = StringIO()
+        european_schedule.to_csv(europe, index=True)
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=f"European_Schedules/{self.season_id}_schedule.csv",
+            Body=europe.getvalue(),
         )
 
         return master_schedule
