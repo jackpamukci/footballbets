@@ -23,6 +23,7 @@ class Season:
         self.season_id = season_id
         self.bucket = bucket
         self.env_path = env_path
+        self.get_dist = get_dist
         self._get_s3_agent()
 
         _data = self._load_data()
@@ -39,7 +40,7 @@ class Season:
         print("process data")
         self._process_event_data()
         print("schdule")
-        self._process_schedule(get_dist=get_dist)
+        self._process_schedule()
         # self._process_player_names()
 
     def _process_event_data(self):
@@ -69,9 +70,9 @@ class Season:
 
         self.events = pd.concat([self.events, utils.get_vaep(self.events)], axis=1)
 
-    def _process_schedule(self, get_dist=False):
+    def _process_schedule(self):
 
-        if get_dist == True:
+        if self.get_dist == True:
             self.schedule = utils.get_distances(self.schedule)
 
         s3_europe = self.s3.get_object(

@@ -35,6 +35,8 @@ cols_to_drop = [
     "away_shots",
     "away_np_xg",
     "away_ppda",
+    "home_min_allocation",
+    "away_min_allocation",
 ]
 
 config_cols = ["season", "game", "date", "home_team", "away_team"]
@@ -70,18 +72,19 @@ class TeamFeatures:
             "home_ppda",
             "away_ppda",
             "points",
+            "min_allocation",
         ],
     ):
 
         self.season = season_data
         self.lookback = lookback
         self.metrics = metrics
-
-        # self.season.schedule = self._get_rest_days()
+        self.use_dist = season_data.get_dist
 
         features_df = self.season.team_stats.copy()
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
+        features_df = self._get_min_allocation(features_df)
         features_df = self._calculate_metric_features(features_df)
         features_df = self._get_proper_cols(features_df)
 
@@ -132,13 +135,46 @@ class TeamFeatures:
         return feats
 
     def _get_proper_cols(self, feats):
+
+        cols = (
+            ["home_rest", "away_rest", "distance"]
+            if self.use_dist == True
+            else ["home_rest", "away_rest"]
+        )
         feats = feats.merge(
-            self.season.schedule[["home_rest", "away_rest", "distance"]],
+            self.season.schedule[cols],
             right_index=True,
             left_index=True,
             how="inner",
         )
         return feats.drop(cols_to_drop, axis=1)
+
+    def _get_min_allocation(self, feats):
+        lineups = self.season.player_stats
+        grouped = lineups.groupby("game")
+
+        for i, row in feats.iterrows():
+            fixture = row.game
+            lineups = grouped.get_group(fixture)
+
+            home_lineups = (
+                lineups[lineups["team"] == row.home_team]
+                .sort_values("minutes", ascending=False)[:14]
+                .minutes
+            )
+            away_lineups = (
+                lineups[lineups["team"] == row.away_team]
+                .sort_values("minutes", ascending=False)[:14]
+                .minutes
+            )
+
+            home_minute_allocation = sum([(90 - x) ** 2 for x in home_lineups])
+            away_minute_allocation = sum([(90 - x) ** 2 for x in away_lineups])
+
+            feats.at[i, "home_min_allocation"] = home_minute_allocation
+            feats.at[i, "away_min_allocation"] = away_minute_allocation
+
+        return feats
 
     def _calculate_slope_metrics(self, lookback_matches, metric, row, ind):
         points = []

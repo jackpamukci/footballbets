@@ -9,5 +9,13 @@
     "Wolves": ["Wolverhampton Wanderers"],
     "Leicester" : ["Leicester City"],
     "Leeds": ["Leeds United", "Leeds Utd"],
-    "Ipswich" : ["Ipswich Town", "Ipswich Town FC", "Ipswich Town F.C."]
+    "Ipswich" : ["Ipswich Town", "Ipswich Town FC", "Ipswich Town F.C."],
+    "Swansea City" : ["Swansea"],
+    "Stoke City" : ["Stoke"], 
+    "West Brom" : ["West Bromwich Albion F.C.", "West Bromwich Albion", "West Bromwich"],
+    "West Ham" : ["West Ham United", "West Ham United FC", "West Ham Utd"],
+    "Watford" : ["Watford FC"], 
+    "Southampton" : ["Southampton FC", "South'ton"],
+    "Huddersfield" : ["Huddersfield Town"],
+    "Cardiff City" : ["Cardiff"]
 }
