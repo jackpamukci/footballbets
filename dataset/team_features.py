@@ -6,89 +6,79 @@ import statistics
 from datetime import datetime
 
 
-cols_to_drop = [
-    "home_team_id",
-    "away_team_id",
-    "home_team_code",
-    "away_team_code",
-    "home_deep_completions",
-    "away_deep_completions",
-    "home_expected_points",
-    "away_expected_points",
-    "away_xg",
-    "home_xg",
-    "away_np_xg_difference",
-    "home_np_xg_difference",
-    "away_points",
-    "home_points",
-    "league",
-    "league_id",
-    "season_id",
-    "game_id",
-    "away_goals",
-    "home_goals",
-    "home_np_xg",
-    "home_ppda",
-    "home_vaep",
-    "away_vaep",
-    "home_shots",
-    "away_shots",
-    "away_np_xg",
-    "away_ppda",
-    "home_min_allocation",
-    "away_min_allocation",
-]
-
-config_cols = ["season", "game", "date", "home_team", "away_team"]
-
-
 class TeamFeatures:
+
     def __init__(
         self,
         season_data: Season,
         lookback: int = 3,
-        metrics: list = [
-            "np_xg",
-            "np_xg_conceded",
-            "home_np_xg",
-            "home_np_xg_conceded",
-            "away_np_xg",
-            "away_np_xg_conceded",
-            "np_xg_slope",
-            "np_xg_conceded_slope",
-            "np_xg_predicted",
-            "np_xg_conceded_predicted",
-            "vaep",
-            "vaep_conceded",
-            "home_vaep",
-            "home_vaep_conceded",
-            "away_vaep",
-            "away_vaep_conceded",
-            "vaep_slope",
-            "vaep_conceded_slope",
-            "vaep_predicted",
-            "vaep_conceded_predicted",
-            "ppda",
-            "home_ppda",
-            "away_ppda",
-            "points",
-            "min_allocation",
-        ],
+        use_diff: bool = False,
+        feat_group: list = ["last_3", "momentum", "venue", "general"],
     ):
 
         self.season = season_data
         self.lookback = lookback
         self.metrics = metrics
         self.use_dist = season_data.get_dist
+        self.use_diff = use_diff
+        self.feat_group = feat_group
 
         features_df = self.season.team_stats.copy()
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
         features_df = self._get_min_allocation(features_df)
         features_df = self._calculate_metric_features(features_df)
+
         features_df = self._get_proper_cols(features_df)
+        features_df = self._filter_features(features_df)
 
         self.features = features_df
+
+    def _filter_features(self, feats):
+        config = feats[config_cols]
+
+        cols = self.feat_group
+        if self.use_diff:
+            last_3_diff = pd.DataFrame(
+                feats[[x for x in last_3 if x.split("_")[2] == "home"]].values
+                - feats[[x for x in last_3 if x.split("_")[2] == "away"]].values,
+                columns=last_3_diff_cols,
+            )
+
+            momentum_diff = pd.DataFrame(
+                feats[[x for x in momentum if x.split("_")[2] == "home"]].values
+                - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
+                columns=momentum_diff_cols,
+            )
+
+            venue_diff = pd.DataFrame(
+                feats[[x for x in venue if x.split("_")[0] == "home"]].values
+                - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
+                columns=venue_diff_cols,
+            )
+
+            general_diff = pd.DataFrame(
+                feats[[x for x in general if x.split("_")[0] == "home"]].values
+                - feats[[x for x in general if x.split("_")[0] == "away"]].values,
+                columns=general_diff_cols,
+            )
+
+            diff_dict = {
+                "last_3": last_3_diff,
+                "momentum": momentum_diff,
+                "venue": venue_diff,
+                "general": general_diff,
+            }
+
+            diff_data = pd.concat([diff_dict[x] for x in self.feat_group], axis=1)
+
+            return pd.concat([config, diff_data], axis=1)
+
+        col_list = [
+            item for sublist in [globals()[x] for x in cols] for item in sublist
+        ]
+
+        return pd.concat([config, feats[col_list]], axis=1)
 
     def _calculate_metric_features(self, feats):
         team_games_cache = {}
@@ -132,7 +122,7 @@ class TeamFeatures:
                             )
                         feats.at[i, f"last_{self.lookback}_{ind}_{metric}"] = value
 
-        return feats
+        return feats.fillna(0)
 
     def _get_proper_cols(self, feats):
 
@@ -304,3 +294,113 @@ class TeamFeatures:
                     tot_points += fixture.away_points
 
         return schedule
+
+
+cols_to_drop = [
+    "home_team_id",
+    "away_team_id",
+    "home_team_code",
+    "away_team_code",
+    "home_deep_completions",
+    "away_deep_completions",
+    "home_expected_points",
+    "away_expected_points",
+    "away_xg",
+    "home_xg",
+    "away_np_xg_difference",
+    "home_np_xg_difference",
+    "away_points",
+    "home_points",
+    "league",
+    "league_id",
+    "season_id",
+    "game_id",
+    "away_goals",
+    "home_goals",
+    "home_np_xg",
+    "home_ppda",
+    "home_vaep",
+    "away_vaep",
+    "home_shots",
+    "away_shots",
+    "away_np_xg",
+    "away_ppda",
+    "home_min_allocation",
+    "away_min_allocation",
+]
+
+metrics = [
+    "np_xg",
+    "np_xg_conceded",
+    "home_np_xg",
+    "home_np_xg_conceded",
+    "away_np_xg",
+    "away_np_xg_conceded",
+    "np_xg_slope",
+    "np_xg_conceded_slope",
+    "np_xg_predicted",
+    "np_xg_conceded_predicted",
+    "vaep",
+    "vaep_conceded",
+    "home_vaep",
+    "home_vaep_conceded",
+    "away_vaep",
+    "away_vaep_conceded",
+    "vaep_slope",
+    "vaep_conceded_slope",
+    "vaep_predicted",
+    "vaep_conceded_predicted",
+    "ppda",
+    "home_ppda",
+    "away_ppda",
+    "points",
+    "min_allocation",
+]
+
+config_cols = ["season", "game", "date", "home_team", "away_team", "target", "distance"]
+last_3 = [
+    f"last_3_{x}_{y}"
+    for x in ["home", "away"]
+    for y in [
+        "points",
+        "np_xg",
+        "np_xg_conceded",
+        "vaep",
+        "vaep_conceded",
+        "ppda",
+        "min_allocation",
+    ]
+]
+momentum = [
+    f"last_3_{x}_{y}_{z}"
+    for x in ["home", "away"]
+    for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded"]
+    for z in ["slope", "predicted"]
+]
+venue = [
+    f"{x}_{x}_{y}"
+    for x in ["home", "away"]
+    for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded", "ppda"]
+]
+general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
+
+last_3_diff_cols = [
+    f"last_3_diff_{metric}"
+    for metric in [
+        "_".join(x.split("_")[3:]) for x in last_3 if x.split("_")[2] == "home"
+    ]
+]
+momentum_diff_cols = [
+    f"last_3_diff_{metric}"
+    for metric in [
+        "_".join(x.split("_")[3:]) for x in momentum if x.split("_")[2] == "home"
+    ]
+]
+venue_diff_cols = [
+    f"venue_diff_{x}"
+    for x in ["_".join(x.split("_")[2:]) for x in venue if x.split("_")[0] == "home"]
+]
+general_diff_cols = [
+    f"gen_diff_{x}"
+    for x in ["_".join(x.split("_")[1:]) for x in general if x.split("_")[0] == "home"]
+]
