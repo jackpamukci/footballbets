@@ -16,7 +16,38 @@ class PlayerFeatures:
         self.features = self._preprocess_features(features_df)
 
     def _preprocess_features(self, features_df):
-        return self._match_player_names(features_df)
+        features_df = self._match_player_names(features_df)
+        features_df = self._get_vaep(features_df)
+        features_df["h_a"] = features_df.apply(
+            lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
+        )
+        return features_df
+
+    def _get_vaep(self, features_df):
+        # Precompute vaep_sum for all players across all fixtures
+        sorted_events = self.events.sort_values(
+            ["fixture", "period_id", "time_seconds"], ascending=True
+        )
+        vaep_sum = (
+            sorted_events.groupby(["fixture", "player"])[
+                ["vaep_value", "offensive_value", "defensive_value"]
+            ]
+            .sum()
+            .reset_index()
+        )
+
+        # Merge the vaep_sum with features_df only once
+        results = features_df.merge(
+            vaep_sum,
+            how="left",
+            left_on=["game", "player"],
+            right_on=["fixture", "player"],
+        )
+
+        # Drop the unnecessary 'fixture' column after the merge
+        results = results.drop(columns=["fixture"])
+
+        return results
 
     def _match_player_names(self, features_df):
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
