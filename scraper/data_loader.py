@@ -10,8 +10,8 @@ import curses
 from utils import get_european_schedule
 
 supported_leagues = [
-    "ENG-Premier League",
-    "ESP-La Liga",
+    # "ENG-Premier League",
+    # "ESP-La Liga",
     "FRA-Ligue 1",
     "GER-Bundesliga",
     "ITA-Serie A",
@@ -40,8 +40,6 @@ class HistoricData:
         self.season_id: int = season_id
         self.league_id: str = league_id
 
-        self.fbref = sd.FBref(leagues=self.league_id, seasons=self.season_id)
-
         self.ws = sd.WhoScored(leagues=self.league_id, seasons=self.season_id)
 
         self.mh = sd.MatchHistory(leagues=self.league_id, seasons=self.season_id)
@@ -50,11 +48,11 @@ class HistoricData:
 
         self.schedule = self._get_league_schedule().iloc[:num_games]
 
-        # self._load_europe_schedule()
+        logging.info(len(self.schedule))
+
         self._load_event_data()
         self._load_missing_players()
         self._load_player_match_stats()
-        self._load_lineups()
         self._load_team_match_data()
         self._load_odds()
 
@@ -114,22 +112,6 @@ class HistoricData:
 
         logging.info("Player Data Into S3")
 
-    def _load_lineups(self):
-
-        lineups = self.fbref.read_lineup(list(self.schedule.fbref_game_id))
-
-        logging.info("Lineup Data Loaded")
-
-        lineups_match = StringIO()
-        lineups.to_csv(lineups_match, index=True)
-        self.s3.put_object(
-            Bucket=self.bucket,
-            Key=f"{self.league_id}/{self.season_id}/lineups.csv",
-            Body=lineups_match.getvalue(),
-        )
-
-        logging.info("Lineup Data Into S3")
-
     def _load_team_match_data(self):
         team_match_data = self.understat.read_team_match_stats(
             list(self.schedule.und_game_id)
@@ -164,15 +146,11 @@ class HistoricData:
 
     def _get_league_schedule(self):
         epl_schedule = self.ws.read_schedule().reset_index()
-        fbref_schedule = self.fbref.read_schedule().reset_index()
         understat_schedule = self.understat.read_schedule().reset_index()
 
         european_schedule = get_european_schedule(self.season_id)
 
         master_schedule = epl_schedule.merge(
-            fbref_schedule[["game", "game_id", "week"]], on="game", how="left"
-        )
-        master_schedule = master_schedule.merge(
             understat_schedule[["game", "game_id"]],
             on="game",
             how="left",
@@ -181,8 +159,7 @@ class HistoricData:
         master_schedule.rename(
             columns={
                 "game_id_x": "ws_game_id",
-                "game_id_y": "fbref_game_id",
-                "game_id": "und_game_id",
+                "game_id_y": "und_game_id",
             },
             inplace=True,
         )
@@ -297,8 +274,9 @@ def main():
     # print(f"You entered: {selected_season}")
 
     # print("Starting web scraper...")
-    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
-        HistoricData(season_id=season, league_id="ENG-Premier League")
+    for league in supported_leagues:
+        for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+            HistoricData(season_id=season, league_id=league)
 
 
 if __name__ == "__main__":

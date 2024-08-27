@@ -27,20 +27,19 @@ class Season:
         self._get_s3_agent()
 
         _data = self._load_data()
-        print("events")
         self.events = _data["events"]
-        print("lineup")
-        self.lineups = _data["lineups"]
         self.missing_players = _data["missing_players"]
         self.odds = _data["odds"]
         self.player_stats = _data["player_stats"]
         self.schedule = _data["schedule"]
         self.team_stats = _data["team_stats"]
 
-        print("process data")
-        self._process_event_data()
         print("schdule")
         self._process_schedule()
+
+        print("process data")
+        self._process_event_data()
+
         # self._process_player_names()
 
     def _process_event_data(self):
@@ -88,7 +87,7 @@ class Season:
         self.schedule = self._get_rest_days()
 
     def _process_player_names(self):
-        player_list = self.lineups.player.unique()
+        player_list = self.player_stats.player.unique()
         self.missing_players["player"] = self.missing_players.player.apply(
             lambda x: utils.best_name_match(x, player_list)
         )
@@ -158,11 +157,11 @@ class Season:
         )
         events = pd.read_csv(StringIO(s3_events["Body"].read().decode("utf-8")))
 
-        s3_lineups = self.s3.get_object(
-            Bucket=self.bucket,
-            Key=f"{self.league_id}/{self.season_id}/lineups.csv",
-        )
-        lineups = pd.read_csv(StringIO(s3_lineups["Body"].read().decode("utf-8")))
+        # s3_lineups = self.s3.get_object(
+        #     Bucket=self.bucket,
+        #     Key=f"{self.league_id}/{self.season_id}/lineups.csv",
+        # )
+        # lineups = pd.read_csv(StringIO(s3_lineups["Body"].read().decode("utf-8")))
 
         s3_missing_players = self.s3.get_object(
             Bucket=self.bucket,
@@ -226,7 +225,7 @@ class Season:
 
         return {
             "events": events,
-            "lineups": lineups,
+            # "lineups": lineups,
             "missing_players": missing_players,
             "odds": odds,
             "player_stats": player_stats,
