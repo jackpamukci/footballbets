@@ -10,6 +10,7 @@ import os
 import numpy as np
 from geopy.distance import geodesic
 import Levenshtein
+from fuzzywuzzy import fuzz, process
 
 
 current_directory = os.getcwd()
@@ -206,6 +207,11 @@ def best_name_match(target, strings):
             best_score = score
             best_string = s
     return best_string
+
+
+def fuzzy_match(query, choices):
+    best_match, score = process.extractOne(query, choices, scorer=fuzz.token_set_ratio)
+    return best_match
 
 
 class ProbabityModel:
