@@ -16,7 +16,7 @@ class PlayerFeatures:
         self.features = self._preprocess_features(features_df)
         self.features = self.features.sort_values(
             ["game", "h_a", "minutes"], ascending=[True, True, False]
-        )
+        ).reset_index(drop=True)
 
     def _preprocess_features(self, features_df):
         features_df = self._match_player_names(features_df)

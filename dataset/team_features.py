@@ -35,6 +35,8 @@ class TeamFeatures:
         self.features = features_df
 
     def _filter_features(self, feats):
+        if self.use_dist == True:
+            config_cols.append("distance")
         config = feats[config_cols]
 
         cols = self.feat_group
@@ -357,7 +359,7 @@ metrics = [
     "min_allocation",
 ]
 
-config_cols = ["season", "game", "date", "home_team", "away_team", "target", "distance"]
+config_cols = ["season", "game", "date", "home_team", "away_team", "target"]
 last_3 = [
     f"last_3_{x}_{y}"
     for x in ["home", "away"]
