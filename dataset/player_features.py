@@ -1,9 +1,9 @@
 import pandas as pd
 from data.season import Season
-from unidecode import unidecode
 from data.utils import best_name_match, fuzzy_match
 from tqdm import tqdm
 import numpy as np
+from unidecode import unidecode
 
 
 class PlayerFeatures:
@@ -79,6 +79,10 @@ class PlayerFeatures:
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
         self.events.player = self.events.player.apply(lambda x: unidecode(x))
 
+        self.season.missing_players.player = self.season.missing_players.player.apply(
+            lambda x: unidecode(x)
+        )
+
         team_match = self.events[["player", "team"]].drop_duplicates(subset="player")
         stat_match = features_df[["player", "team"]].drop_duplicates(subset="player")
 
@@ -116,17 +120,21 @@ class PlayerFeatures:
             )
         ][["player", "player_id", "team"]].drop_duplicates()
 
-        old_dups["new_name"] = old_dups.apply(
-            lambda x: fuzzy_match(
-                x.player, self.events[self.events["team"] == x.team].player.unique()
-            ),
-            axis=1,
-        )
+        if old_dups.shape[0] != 0:
 
-        for i, row in old_dups.iterrows():
-            idx = features_df[features_df["player_id"] == row.player_id].index
-            features_df.loc[idx, "player"] = row.new_name
+            oldies = old_dups.apply(
+                lambda x: fuzzy_match(
+                    x.player, self.events[self.events["team"] == x.team].player.unique()
+                ),
+                axis=1,
+            )
 
-        # print(old_dups.new_name)
+            print(oldies.shape)
+
+            old_dups["new_name"] = oldies
+
+            for i, row in old_dups.iterrows():
+                idx = features_df[features_df["player_id"] == row.player_id].index
+                features_df.loc[idx, "player"] = row.new_name
 
         return features_df

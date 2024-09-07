@@ -7,6 +7,9 @@ import socceraction.spadl as spadl
 from data import utils
 from data.xg import xG
 import numpy as np
+from unidecode import unidecode
+from tqdm import tqdm
+import _config
 
 
 class Season:
@@ -39,8 +42,9 @@ class Season:
 
         print("process data")
         self._process_event_data()
-
+        # self._process_team_names()
         # self._process_player_names()
+        # print(_config.TEAMNAME_REPLACEMENTS)
 
     def _process_event_data(self):
         self.events = spadl.add_names(self.events)
@@ -87,16 +91,62 @@ class Season:
         self.schedule = self._get_rest_days()
 
     def _process_player_names(self):
-        player_list = self.player_stats.player.unique()
-        self.missing_players["player"] = self.missing_players.player.apply(
-            lambda x: utils.best_name_match(x, player_list)
+        features_df = self.player_stats.copy()
+
+        features_df.player = features_df.player.apply(lambda x: unidecode(x))
+        self.events.player = self.events.player.apply(lambda x: unidecode(x))
+
+        team_match = self.events[["player", "team"]].drop_duplicates(subset="player")
+        stat_match = features_df[["player", "team"]].drop_duplicates(subset="player")
+
+        for i, row in tqdm(features_df.iterrows(), total=features_df.shape[0]):
+            if (
+                row.player
+                not in team_match[team_match["team"] == row.team].player.unique()
+            ):
+                team_players = team_match[
+                    (team_match["team"] == row.team)
+                ].player.unique()
+                stat_players = stat_match[
+                    (stat_match["team"] == row.team)
+                ].player.unique()
+                features_df.at[i, "player"] = utils.best_name_match(
+                    row.player, set(team_players).difference(stat_players)
+                )
+
+        features_df["player"] = features_df.groupby("player_id")["player"].transform(
+            "first"
         )
-        self.player_stats["player"] = self.player_stats.player.apply(
-            lambda x: utils.best_name_match(x, player_list)
+
+        duplicate_players = (
+            features_df[["player", "player_id", "team"]]
+            .drop_duplicates()  # Remove duplicate rows
+            .groupby("player")  # Group by 'player'
+            .filter(
+                lambda x: x["player_id"].nunique() > 1
+            )  # Filter groups with more than one unique 'player_id'
         )
-        # self.events["player"] = self.events.player.apply(
-        #     lambda x: utils.best_name_match(x, player_list)
-        # )
+
+        old_dups = self.player_stats[
+            self.player_stats["player_id"].isin(list(duplicate_players.player_id))
+        ][["player", "player_id", "team"]].drop_duplicates()
+
+        if old_dups.shape[0] != 0:
+
+            oldies = old_dups.apply(
+                lambda x: utils.fuzzy_match(
+                    x.player, self.events[self.events["team"] == x.team].player.unique()
+                ),
+                axis=1,
+            )
+
+            old_dups["new_name"] = oldies
+
+            for i, row in old_dups.iterrows():
+                idx = features_df[features_df["player_id"] == row.player_id].index
+                features_df.loc[idx, "player"] = row.new_name
+
+        self.player_stats.player = features_df.player
 
     def _get_rest_days(self):
         schedule = self.schedule
@@ -179,26 +229,26 @@ class Season:
 
         non_odds = odds.columns[:6]
         odd_nums = [
-            "B365>2.5",
-            "B365<2.5",
-            "P>2.5",
-            "P<2.5",
+            # "B365>2.5",
+            # "B365<2.5",
+            # "P>2.5",
+            # "P<2.5",
             "B365H",
             "B365D",
             "B365A",
             "PSH",
             "PSD",
             "PSA",
-            "Max>2.5",
-            "Max<2.5",
-            "Avg>2.5",
-            "Avg<2.5",
-            "MaxH",
-            "MaxD",
-            "MaxA",
-            "AvgH",
-            "AvgD",
-            "AvgA",
+            # "Max>2.5",
+            # "Max<2.5",
+            # "Avg>2.5",
+            # "Avg<2.5",
+            # "MaxH",
+            # "MaxD",
+            # "MaxA",
+            # "AvgH",
+            # "AvgD",
+            # "AvgA",
         ]
         cols = list(non_odds) + odd_nums
         odds = odds[cols]

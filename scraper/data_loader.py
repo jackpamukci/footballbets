@@ -10,7 +10,7 @@ import curses
 from utils import get_european_schedule
 
 supported_leagues = [
-    # "ENG-Premier League",
+    "ENG-Premier League",
     # "ESP-La Liga",
     "FRA-Ligue 1",
     "GER-Bundesliga",
@@ -274,9 +274,8 @@ def main():
     # print(f"You entered: {selected_season}")
 
     # print("Starting web scraper...")
-    for league in supported_leagues:
-        for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
-            HistoricData(season_id=season, league_id=league)
+    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+        HistoricData(season_id=season, league_id="ENG-Premier League")
 
 
 if __name__ == "__main__":

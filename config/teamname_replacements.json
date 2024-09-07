@@ -1,7 +1,7 @@
 {
     "Tottenham": ["Tottenham Hotspur", "Tottenham Hotspur FC", "Spurs"],
     "Newcastle": ["Newcastle Utd", "Newcastle United"],
-    "Sheffield United": ["Sheffield Utd"],
+    "Sheffield United": ["Sheffield Utd", "Sheff Utd"],
     "Manchester United": ["Man United", "Manchester Utd", "Man U", "Man Utd"],
     "Nottingham Forest": ["Nott'ham Forest", "Nott'm Forest"], 
     "Manchester City": ["Man City"],
@@ -12,7 +12,7 @@
     "Ipswich" : ["Ipswich Town", "Ipswich Town FC", "Ipswich Town F.C."],
     "Swansea City" : ["Swansea"],
     "Stoke City" : ["Stoke"], 
-    "West Brom" : ["West Bromwich Albion F.C.", "West Bromwich Albion", "West Bromwich"],
+    "West Brom" : ["West Bromwich Albion F.C.", "West Bromwich Albion", "West Bromwich", "WBA"],
     "West Ham" : ["West Ham United", "West Ham United FC", "West Ham Utd"],
     "Watford" : ["Watford FC"], 
     "Southampton" : ["Southampton FC", "South'ton"],
