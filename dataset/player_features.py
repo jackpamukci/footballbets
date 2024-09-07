@@ -4,13 +4,15 @@ from data.utils import best_name_match, fuzzy_match
 from tqdm import tqdm
 import numpy as np
 from unidecode import unidecode
+import statistics
 
 
 class PlayerFeatures:
 
-    def __init__(self, season_data: Season):
+    def __init__(self, season_data: Season, lookback=3):
         self.season = season_data
         self.events = self.season.events
+        self.lookback = lookback
 
         features_df = self.season.player_stats.copy()
         self.features = self._preprocess_features(features_df)
@@ -25,6 +27,7 @@ class PlayerFeatures:
             lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
         )
         features_df = self._fix_positions(features_df)
+        features_df = self._calculate_features(features_df)
         return features_df
 
     def _get_vaep(self, features_df):
@@ -53,6 +56,80 @@ class PlayerFeatures:
 
         return results
 
+    def _calculate_features(self, features):
+        features.dropna(subset=['player'], inplace=True)
+        match_fixtures = features.groupby('game')
+        player_performances = features.groupby('player')
+
+        for fixture, data in tqdm(match_fixtures):
+            home_team = fixture[11:].split("-")[0]
+            home_fix = pd.Series(features[features.team == home_team].game.unique())
+            home_match = home_fix[home_fix ==fixture].index[0]
+            lookback_home = home_fix.loc[home_match-self.lookback:home_match-1]
+            home_xg_table = lookback_home.to_frame(name='id').merge(self.season.team_stats, how='left', left_on='id', right_on='game')
+            
+
+            away_team = fixture[11:].split("-")[1]
+            away_fix = pd.Series(features[features.team == away_team].game.unique())
+            away_match = away_fix[away_fix ==fixture].index[0]
+            lookback_away = away_fix.loc[away_match-self.lookback:away_match-1]
+            away_xg_table = lookback_away.to_frame(name='id').merge(self.season.team_stats, how='left', left_on='id', right_on='game')
+
+            home_xg_conceded = statistics.mean([row.home_np_xg if row.away_team == home_team else row.away_np_xg for index, row  in home_xg_table.iterrows()]) if len(home_xg_table) > 1 else np.nan
+            away_xg_conceded = statistics.mean([row.home_np_xg if row.away_team == away_team else row.away_np_xg for index, row  in away_xg_table.iterrows()]) if len(away_xg_table) > 1 else np.nan
+
+            for i, row in data.iterrows():
+                player_perf = player_performances.get_group(row.player)
+                seasonal_table = player_perf.loc[:i]
+                position = player_perf.index.get_loc(i)
+                lookback_table = player_perf.iloc[position-3:position]
+
+                if len(seasonal_table) <= 1 or len(lookback_table) <= 1:
+                    cons = np.nan
+                    season_vaep = np.nan
+                    season_xg = np.nan
+                    season_goals = np.nan
+
+                    lookback_vaep = np.nan
+                    lookback_xg = np.nan
+                    lookback_minutes = np.nan
+                    lookback_goals = np.nan
+                    lookback_conceded = np.nan
+                else:
+                    cons = statistics.stdev(seasonal_table.minutes) / statistics.mean(seasonal_table.minutes)
+                    season_vaep = statistics.mean(seasonal_table.vaep_value)
+                    season_xg = statistics.mean(seasonal_table.xg)
+                    season_goals = sum(seasonal_table.goals)
+
+                    lookback_vaep = statistics.mean(lookback_table.vaep_value)
+                    lookback_xg = statistics.mean(lookback_table.xg)
+                    lookback_goals = sum(lookback_table.goals)
+
+                    if row.h_a == 'home':
+                        def_3 = lookback_home.to_frame(name='id').merge(seasonal_table, how='left', left_on='id', right_on='game')
+                        lookback_conceded = home_xg_conceded
+                        def_3.minutes.fillna(0, inplace=True)  
+                        lookback_minutes = statistics.mean(def_3.minutes)
+                    else:
+                        def_3 = lookback_away.to_frame(name='id').merge(seasonal_table, how='left', left_on='id', right_on='game')
+                        lookback_conceded = away_xg_conceded
+                        def_3.minutes.fillna(0, inplace=True)  
+                        lookback_minutes = statistics.mean(def_3.minutes)
+
+
+                features.at[i, 'CONS'] = cons
+                features.at[i, 'season_vaep'] = season_vaep
+                features.at[i, 'season_xg'] = season_xg
+                features.at[i, 'season_goals'] = season_goals
+
+                features.at[i, 'lookback_minutes'] = lookback_minutes
+                features.at[i, 'lookback_vaep'] = lookback_vaep
+                features.at[i, 'lookback_xg'] = lookback_xg
+                features.at[i, 'lookback_xg_conceded'] = lookback_conceded
+                features.at[i, 'lookback_goals'] = lookback_goals
+
+        return features
+
     def _fix_positions(self, features_df):
         position_rep = {
             "CB": ["DC"],
@@ -79,9 +156,9 @@ class PlayerFeatures:
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
         self.events.player = self.events.player.apply(lambda x: unidecode(x))
 
-        self.season.missing_players.player = self.season.missing_players.player.apply(
-            lambda x: unidecode(x)
-        )
+        # self.season.missing_players.player = self.season.missing_players.player.apply(
+        #     lambda x: unidecode(x)
+        # )
 
         team_match = self.events[["player", "team"]].drop_duplicates(subset="player")
         stat_match = features_df[["player", "team"]].drop_duplicates(subset="player")
