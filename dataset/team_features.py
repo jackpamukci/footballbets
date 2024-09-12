@@ -129,17 +129,16 @@ class TeamFeatures:
     def _get_proper_cols(self, feats):
 
         cols = (
-            ["home_rest", "away_rest", "distance"]
+            ["game", "home_rest", "away_rest", "distance", "matchday"]
             if self.use_dist == True
-            else ["home_rest", "away_rest"]
+            else ["game", "home_rest", "away_rest", "matchday"]
         )
-        feats = feats.merge(
+        return feats.merge(
             self.season.schedule[cols],
-            right_index=True,
-            left_index=True,
+            right_on="game",
+            left_on="game",
             how="inner",
-        )
-        return feats.drop(cols_to_drop, axis=1)
+        ).drop(cols_to_drop, axis=1)
 
     def _get_min_allocation(self, feats):
         lineups = self.season.player_stats
@@ -359,7 +358,7 @@ metrics = [
     "min_allocation",
 ]
 
-config_cols = ["season", "game", "date", "home_team", "away_team", "target"]
+config_cols = ["season", "game", "date", "home_team", "away_team", "target", "matchday"]
 last_3 = [
     f"last_3_{x}_{y}"
     for x in ["home", "away"]
