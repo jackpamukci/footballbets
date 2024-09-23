@@ -139,6 +139,8 @@ class TeamFeatures:
             left_index=True,
             how="inner",
         )
+
+        # Edit for elo
         return feats.drop(cols_to_drop, axis=1)
 
     def _get_min_allocation(self, feats):
