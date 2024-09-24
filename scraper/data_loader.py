@@ -8,9 +8,11 @@ from io import StringIO
 import os
 import curses
 from utils import get_european_schedule
+from pathlib import Path
+
 
 supported_leagues = [
-    "ENG-Premier League",
+    # "ENG-Premier League",
     # "ESP-La Liga",
     "FRA-Ligue 1",
     "GER-Bundesliga",
@@ -51,15 +53,30 @@ class HistoricData:
         logging.info(len(self.schedule))
 
         self._load_event_data()
-        self._load_missing_players()
+        # self._load_missing_players()
         self._load_player_match_stats()
         self._load_team_match_data()
-        self._load_odds()
+        try:
+            self._load_odds()
+        except:
+            with open("scraper_notes.txt", "a") as file:
+                file.write(
+                    f"{self.league_id} | {self.season_id} \n Betting Data Unavailable (must download manually) \n"
+                )
 
     def _load_event_data(self):
-        event_data = self.ws.read_events(
-            list(self.schedule.ws_game_id), output_fmt="spadl"
-        )
+        game_ids = list(self.schedule.ws_game_id)
+        event_data = pd.DataFrame()
+
+        for id in game_ids:
+            try:
+                match_data = self.ws.read_events(id, output_fmt="spadl")
+                event_data = pd.concat([event_data, match_data])
+            except:
+                with open("scraper_notes.txt", "a") as file:
+                    file.write(
+                        f"{self.league_id} | {self.season_id} \n WhoScored Game ID {id} unable to load events \n"
+                    )
 
         logging.info("SPADL Data Loaded")
         event_data.merge(
@@ -80,7 +97,20 @@ class HistoricData:
         logging.info("SPADL Data Into S3")
 
     def _load_missing_players(self):
-        missing_players = self.ws.read_missing_players(list(self.schedule.ws_game_id))
+        game_ids = list(self.schedule.ws_game_id)
+        missing_players = pd.DataFrame()
+
+        # self.ws.read_missing_players(list(self.schedule.ws_game_id))
+
+        for id in game_ids:
+            try:
+                match_missing_players = self.ws.read_missing_players(id)
+                missing_players = pd.concat([missing_players, match_missing_players])
+            except:
+                with open("scraper_notes.txt", "a") as file:
+                    file.write(
+                        f"{self.league_id} | {self.season_id} \n WhoScored Game ID {id} unable to load missing players \n"
+                    )
 
         logging.info("Missing Player Data Loaded")
 
@@ -145,7 +175,30 @@ class HistoricData:
         logging.info("Team Match Stats Into S3")
 
     def _get_league_schedule(self):
+
+        # try:
+        #     epl_schedule = self.ws.read_schedule().reset_index()
+        # except:
+        #     stage = self.ws.read_season_stages().iloc[0]
+        #     region_id = stage.region_id
+        #     stage_id = stage.stage_id
+        #     league_id = stage.league_id
+        #     season_id = stage.season_id
+
+        #     stage_url = f"https://www.whoscored.com/Regions/{region_id}/Tournaments/{league_id}/Seasons/{season_id}/Stages/{stage_id}"
+        #     calendar_filepath = (
+        #         self.ws.data_dir / f"matches/{self.league_id}_{self.season_id}.html"
+        #     )
+
+        #     cal = self.ws.get(
+        #         stage_url,
+        #         calendar_filepath,
+        #         var="wsCalendar",
+        #     )
+        #     epl_schedule = self.ws.read_schedule().reset_index()
+
         epl_schedule = self.ws.read_schedule().reset_index()
+
         understat_schedule = self.understat.read_schedule().reset_index()
 
         european_schedule = get_european_schedule(self.season_id)
@@ -165,6 +218,17 @@ class HistoricData:
         )
 
         master_schedule = master_schedule.reset_index()
+
+        with open("scraper_notes.txt", "a") as file:
+            ws_differences = set(epl_schedule.home_team.unique()).difference(
+                understat_schedule.home_team.unique()
+            )
+            us_differences = set(understat_schedule.home_team.unique()).difference(
+                epl_schedule.home_team.unique()
+            )
+            file.write(
+                f"{self.league_id} | {self.season_id} \n WhoScored Team Diff: {ws_differences} \n Understat Team Diff: {us_differences} \n"
+            )
 
         schedule_match = StringIO()
         master_schedule.to_csv(schedule_match, index=True)
@@ -274,8 +338,13 @@ def main():
     # print(f"You entered: {selected_season}")
 
     # print("Starting web scraper...")
-    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
-        HistoricData(season_id=season, league_id="ENG-Premier League")
+    for league in supported_leagues:
+        for season in [1819, 1920, 2021, 2122, 2223, 2324]:
+
+            if league == "FRA-Ligue 1" and season != 2324:
+                continue
+            else:
+                HistoricData(season_id=season, league_id=league)
 
 
 if __name__ == "__main__":

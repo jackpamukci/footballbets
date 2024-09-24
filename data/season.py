@@ -9,6 +9,7 @@ from data.xg import xG
 import numpy as np
 from unidecode import unidecode
 from tqdm import tqdm
+from datetime import timedelta
 import _config
 
 
@@ -31,7 +32,7 @@ class Season:
 
         _data = self._load_data()
         self.events = _data["events"]
-        self.missing_players = _data["missing_players"]
+        # self.missing_players = _data["missing_players"]
         self.odds = _data["odds"]
         self.player_stats = _data["player_stats"]
         self.schedule = _data["schedule"]
@@ -88,7 +89,7 @@ class Season:
             [self.schedule, europe], ignore_index=True
         ).sort_values("start_time")
 
-        self.schedule = self._get_rest_days()
+        self.schedule = self._get_rest_and_matchday()
 
     def _process_player_names(self):
         features_df = self.player_stats.copy()
@@ -148,7 +149,7 @@ class Season:
 
         self.player_stats.player = features_df.player
 
-    def _get_rest_days(self):
+    def _get_rest_and_matchday(self):
         schedule = self.schedule
         league = self.league_id
 
@@ -198,6 +199,24 @@ class Season:
         )
         schedule = schedule[schedule["league"] == league]
 
+        matchday_span = timedelta(days=4)
+        schedule["matchday"] = 1
+        first_date = schedule.iloc[0]["start_date"]
+
+        current_matchday = 1
+
+        for id, row in tqdm(schedule.iterrows()):
+            if row.start_date > first_date + matchday_span:
+                current_matchday += 1
+                first_date = first_date + timedelta(days=7)
+
+            schedule.at[id, "matchday"] = current_matchday
+
+        m_to_null = schedule["matchday"].value_counts()
+        to_replace = m_to_null[m_to_null < 3].index
+        schedule["matchday"] = schedule["matchday"].replace(to_replace, np.nan)
+        schedule["matchday"] = schedule["matchday"].bfill()
+
         return schedule
 
     def _load_data(self):
@@ -213,13 +232,13 @@ class Season:
         # )
         # lineups = pd.read_csv(StringIO(s3_lineups["Body"].read().decode("utf-8")))
 
-        s3_missing_players = self.s3.get_object(
-            Bucket=self.bucket,
-            Key=f"{self.league_id}/{self.season_id}/missing_players.csv",
-        )
-        missing_players = pd.read_csv(
-            StringIO(s3_missing_players["Body"].read().decode("utf-8"))
-        )
+        # s3_missing_players = self.s3.get_object(
+        #     Bucket=self.bucket,
+        #     Key=f"{self.league_id}/{self.season_id}/missing_players.csv",
+        # )
+        # missing_players = pd.read_csv(
+        #     StringIO(s3_missing_players["Body"].read().decode("utf-8"))
+        # )
 
         s3_odds = self.s3.get_object(
             Bucket=self.bucket,
@@ -276,7 +295,7 @@ class Season:
         return {
             "events": events,
             # "lineups": lineups,
-            "missing_players": missing_players,
+            # "missing_players": missing_players,
             "odds": odds,
             "player_stats": player_stats,
             "schedule": schedule,
