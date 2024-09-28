@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 import statistics
 from datetime import datetime
+from sklearn.preprocessing import MinMaxScaler
 
 
 class TeamFeatures:
@@ -15,6 +16,9 @@ class TeamFeatures:
         use_diff: bool = False,
         feat_group: list = ["last_3", "momentum", "venue", "general"],
     ):
+
+        self.met_col_list = None
+        self.elo_col_list = None
 
         self.season = season_data
         self.lookback = lookback
@@ -30,11 +34,12 @@ class TeamFeatures:
         features_df = self._calculate_metric_features(features_df)
 
         features_df = self._get_proper_cols(features_df)
-        features_df = self._filter_features(features_df)
+        # self._filter_features(features_df)
+        features_df = self._normalize_features(features_df)
 
         self.features = features_df
 
-    def _filter_features(self, feats):
+    def _normalize_features(self, feats):
         if self.use_dist == True:
             config_cols.append("distance")
         config = feats[config_cols]
@@ -80,7 +85,15 @@ class TeamFeatures:
             item for sublist in [globals()[x] for x in cols] for item in sublist
         ]
 
-        return pd.concat([config, feats[col_list]], axis=1)
+        self.met_col_list = col_list
+
+        norm_features = feats.groupby("matchday", group_keys=False).apply(
+            self._scale_group
+        )
+        # ONly for testing! REMOVE feats[cols_to_drop]
+        return pd.concat(
+            [config, feats[cols_to_drop], norm_features[self.met_col_list]], axis=1
+        )
 
     def _calculate_metric_features(self, feats):
         team_games_cache = {}
@@ -138,7 +151,8 @@ class TeamFeatures:
             right_on="game",
             left_on="game",
             how="inner",
-        ).drop(cols_to_drop, axis=1)
+        )
+        return feats
 
     def _get_min_allocation(self, feats):
         lineups = self.season.player_stats
@@ -295,6 +309,11 @@ class TeamFeatures:
                     tot_points += fixture.away_points
 
         return schedule
+
+    def _scale_group(self, group):
+        scaler = MinMaxScaler()
+        group[self.met_col_list] = scaler.fit_transform(group[self.met_col_list])
+        return group
 
 
 cols_to_drop = [
