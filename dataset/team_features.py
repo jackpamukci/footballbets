@@ -135,7 +135,7 @@ class TeamFeatures:
                     if column_name not in feats.columns:
                         feats[column_name] = 1500
 
-                    if games_played < self.lookback:
+                    if games_played < self.lookback - 1:
                         continue
 
                     else:
@@ -216,7 +216,7 @@ class TeamFeatures:
                 team_games = team_games_cache[team].loc[:i].iloc[:-1]
                 games_played = len(team_games)
 
-                if games_played < self.lookback:
+                if games_played <= 1:
                     continue
 
                 for metric in self.metrics:
