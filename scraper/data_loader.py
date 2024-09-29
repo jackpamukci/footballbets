@@ -12,8 +12,8 @@ from pathlib import Path
 
 
 supported_leagues = [
-    # "ENG-Premier League",
-    # "ESP-La Liga",
+    "ENG-Premier League",
+    "ESP-La Liga",
     "FRA-Ligue 1",
     "GER-Bundesliga",
     "ITA-Serie A",
@@ -53,7 +53,7 @@ class HistoricData:
         logging.info(len(self.schedule))
 
         self._load_event_data()
-        # self._load_missing_players()
+        self._load_player_ratings()
         self._load_player_match_stats()
         self._load_team_match_data()
         try:
@@ -95,6 +95,33 @@ class HistoricData:
         )
 
         logging.info("SPADL Data Into S3")
+
+    def _load_player_ratings(self):
+        game_ids = list(self.schedule.ws_game_id)
+        player_ratings = pd.DataFrame()
+
+        for id in game_ids:
+            try:
+                match_ratings = self.ws.read_player_ratings(id)
+                player_ratings = pd.concat([player_ratings, match_ratings])
+            except:
+                with open("scraper_notes.txt", "a") as file:
+                    file.write(
+                        f"{self.league_id} | {self.season_id} \n WhoScored Game ID {id} unable to load ratings \n"
+                    )
+
+        logging.info("Player Ratings Loaded")
+
+        ratings_buffer = StringIO()
+
+        player_ratings.to_csv(ratings_buffer, index=True)
+        self.s3.put_object(
+            Bucket=self.bucket,
+            Key=f"{self.league_id}/{self.season_id}/player_ratings.csv",
+            Body=ratings_buffer.getvalue(),
+        )
+
+        logging.info("Ratings Data Into S3")
 
     def _load_missing_players(self):
         game_ids = list(self.schedule.ws_game_id)
@@ -176,27 +203,6 @@ class HistoricData:
 
     def _get_league_schedule(self):
 
-        # try:
-        #     epl_schedule = self.ws.read_schedule().reset_index()
-        # except:
-        #     stage = self.ws.read_season_stages().iloc[0]
-        #     region_id = stage.region_id
-        #     stage_id = stage.stage_id
-        #     league_id = stage.league_id
-        #     season_id = stage.season_id
-
-        #     stage_url = f"https://www.whoscored.com/Regions/{region_id}/Tournaments/{league_id}/Seasons/{season_id}/Stages/{stage_id}"
-        #     calendar_filepath = (
-        #         self.ws.data_dir / f"matches/{self.league_id}_{self.season_id}.html"
-        #     )
-
-        #     cal = self.ws.get(
-        #         stage_url,
-        #         calendar_filepath,
-        #         var="wsCalendar",
-        #     )
-        #     epl_schedule = self.ws.read_schedule().reset_index()
-
         epl_schedule = self.ws.read_schedule().reset_index()
 
         understat_schedule = self.understat.read_schedule().reset_index()
@@ -269,82 +275,11 @@ class HistoricData:
             ) from e
 
 
-def main_menu(stdscr, options):
-    # Turn off cursor and initialize colors
-    curses.curs_set(0)
-    curses.start_color()
-    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
-
-    current_row = 0
-
-    while True:
-        stdscr.clear()
-        stdscr.addstr(0, 0, "Select an option for league ID from the following:")
-
-        # Display the menu options with highlighting
-        for idx, row in enumerate(options):
-            if idx == current_row:
-                stdscr.attron(curses.color_pair(1))
-                stdscr.addstr(idx + 2, 0, f"* {row}")  # Move options down by one row
-                stdscr.attroff(curses.color_pair(1))
-            else:
-                stdscr.addstr(idx + 2, 2, row)  # Move options down by one row
-
-        stdscr.refresh()
-
-        key = stdscr.getch()
-
-        if key == curses.KEY_UP and current_row > 0:
-            current_row -= 1
-        elif key == curses.KEY_DOWN and current_row < len(options) - 1:
-            current_row += 1
-        elif key == curses.KEY_ENTER or key in [10, 13]:
-            selected_option = options[current_row]
-            stdscr.addstr(8, 0, f"You selected: {selected_option}")
-            stdscr.refresh()
-
-            # Ask for an integer input using curses
-            stdscr.addstr(10, 0, "Enter an integer code: ")
-            curses.echo()  # Enable echoing of typed characters
-            int_code = stdscr.getstr(
-                11, 0, 20
-            )  # Get user input, max length of 20 characters
-            int_code = int(int_code.decode("utf-8"))  # Decode and convert to integer
-
-            stdscr.addstr(0, 0, f"You entered: {int_code}")
-            stdscr.refresh()
-            try:
-                stdscr.addstr(15, 0, "Enter number of games: ")
-                curses.echo()  # Enable echoing of typed characters
-                num_games = stdscr.getstr(
-                    16, 0, 20
-                )  # Get user input, max length of 20 characters
-                num_games = int(num_games.decode("utf-8"))
-            except ValueError:
-                num_games = 380
-
-            return selected_option, int_code, num_games
-
-
 def main():
 
-    # Initialize curses and show the menu
-    # selected_league, selected_season, num_games = curses.wrapper(
-    #     main_menu, supported_leagues
-    # )
-    # print(f"You selected: {selected_league}")
-
-    # # Ask for an integer input
-    # print(f"You entered: {selected_season}")
-
-    # print("Starting web scraper...")
     for league in supported_leagues:
-        for season in [1819, 1920, 2021, 2122, 2223, 2324]:
-
-            if league == "FRA-Ligue 1" and season != 2324:
-                continue
-            else:
-                HistoricData(season_id=season, league_id=league)
+        for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+            HistoricData(season_id=season, league_id=league)
 
 
 if __name__ == "__main__":
