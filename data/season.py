@@ -32,7 +32,7 @@ class Season:
 
         _data = self._load_data()
         self.events = _data["events"]
-        # self.missing_players = _data["missing_players"]
+        self.player_ratings = _data["player_ratings"]
         self.odds = _data["odds"]
         self.player_stats = _data["player_stats"]
         self.schedule = _data["schedule"]
@@ -232,13 +232,13 @@ class Season:
         # )
         # lineups = pd.read_csv(StringIO(s3_lineups["Body"].read().decode("utf-8")))
 
-        # s3_missing_players = self.s3.get_object(
-        #     Bucket=self.bucket,
-        #     Key=f"{self.league_id}/{self.season_id}/missing_players.csv",
-        # )
-        # missing_players = pd.read_csv(
-        #     StringIO(s3_missing_players["Body"].read().decode("utf-8"))
-        # )
+        s3_player_ratings = self.s3.get_object(
+            Bucket=self.bucket,
+            Key=f"{self.league_id}/{self.season_id}/player_ratings.csv",
+        )
+        player_ratings = pd.read_csv(
+            StringIO(s3_player_ratings["Body"].read().decode("utf-8"))
+        )
 
         s3_odds = self.s3.get_object(
             Bucket=self.bucket,
@@ -246,31 +246,31 @@ class Season:
         )
         odds = pd.read_csv(StringIO(s3_odds["Body"].read().decode("utf-8")))
 
-        non_odds = odds.columns[:6]
-        odd_nums = [
-            # "B365>2.5",
-            # "B365<2.5",
-            # "P>2.5",
-            # "P<2.5",
-            "B365H",
-            "B365D",
-            "B365A",
-            "PSH",
-            "PSD",
-            "PSA",
-            # "Max>2.5",
-            # "Max<2.5",
-            # "Avg>2.5",
-            # "Avg<2.5",
-            # "MaxH",
-            # "MaxD",
-            # "MaxA",
-            # "AvgH",
-            # "AvgD",
-            # "AvgA",
-        ]
-        cols = list(non_odds) + odd_nums
-        odds = odds[cols]
+        # non_odds = odds.columns[:6]
+        # odd_nums = [
+        #     # "B365>2.5",
+        #     # "B365<2.5",
+        #     # "P>2.5",
+        #     # "P<2.5",
+        #     "B365H",
+        #     "B365D",
+        #     "B365A",
+        #     "PSH",
+        #     "PSD",
+        #     "PSA",
+        #     # "Max>2.5",
+        #     # "Max<2.5",
+        #     # "Avg>2.5",
+        #     # "Avg<2.5",
+        #     # "MaxH",
+        #     # "MaxD",
+        #     # "MaxA",
+        #     # "AvgH",
+        #     # "AvgD",
+        #     # "AvgA",
+        # ]
+        # cols = list(non_odds) + odd_nums
+        # odds = odds[cols]
 
         s3_player_stats = self.s3.get_object(
             Bucket=self.bucket,
@@ -295,7 +295,7 @@ class Season:
         return {
             "events": events,
             # "lineups": lineups,
-            # "missing_players": missing_players,
+            "player_ratings": player_ratings,
             "odds": odds,
             "player_stats": player_stats,
             "schedule": schedule,
