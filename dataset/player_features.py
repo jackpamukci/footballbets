@@ -6,7 +6,6 @@ import numpy as np
 from unidecode import unidecode
 import statistics
 
-
 class PlayerFeatures:
 
     def __init__(self, season_data: Season, lookback=3):
@@ -28,6 +27,12 @@ class PlayerFeatures:
         )
         features_df = self._fix_positions(features_df)
         features_df = self._calculate_features(features_df)
+
+        # gets ratings from ratings table
+        player_ratings = self.season.player_ratings
+        features_df = features_df.merge(player_ratings[['player', 'game', 'team', 'rating']], how='left', on=['game', 'team', 'player'])
+        # features_df.rating.fillna(6, inplace=True)
+
         return features_df
 
     def _get_vaep(self, features_df):
@@ -155,6 +160,7 @@ class PlayerFeatures:
     def _match_player_names(self, features_df):
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
         self.events.player = self.events.player.apply(lambda x: unidecode(x))
+        self.season.player_ratings.player = self.season.player_ratings.player.apply(lambda x: unidecode(x))
 
         # self.season.missing_players.player = self.season.missing_players.player.apply(
         #     lambda x: unidecode(x)
