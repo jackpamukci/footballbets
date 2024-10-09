@@ -36,6 +36,7 @@ class TeamFeatures:
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
         features_df = self._get_min_allocation(features_df)
+        features_df = self._get_average_rating(features_df)
         features_df = self._calculate_metric_features(features_df)
 
         if self.metrics_calc:
@@ -194,7 +195,7 @@ class TeamFeatures:
                         #     feats.at[i, f"{ind}_{metric}"] = (
                         #         old_elo  # Keep the old Elo rating unchanged
                         #     )
-                        #     continue
+                        #     continueg
 
                         # Update the Elo rating based on the actual vs expected values
                         feats.at[i, f"{ind}_{metric}"] = old_elo + (
@@ -391,6 +392,22 @@ class TeamFeatures:
         feats["target"] = targets
 
         return feats
+    
+    def _get_average_rating(self, feats):
+        player_ratings = self.season.player_ratings
+        player_ratings["h_a"] = player_ratings.apply(
+                    lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
+                )
+        ratings_groups = player_ratings.groupby('game')
+
+        for i, row in feats.iterrows():
+            ratings = ratings_groups.get_group(row.game)
+            home_ratings = ratings[ratings['h_a'] == 'home'].rating.mean()
+            away_ratings = ratings[ratings['h_a'] == 'away'].rating.mean()
+            feats.at[i, 'home_player_rating'] = home_ratings
+            feats.at[i, 'away_player_rating'] = away_ratings
+
+        return feats
 
     def _get_season_points(self, schedule):
         schedule = schedule.copy()
@@ -456,6 +473,8 @@ cols_to_drop = [
     "away_ppda",
     "home_min_allocation",
     "away_min_allocation",
+    "home_player_rating",
+    "away_player_rating"
 ]
 
 elo_metrics = [
@@ -496,6 +515,9 @@ metrics = [
     "away_ppda",
     "points",
     "min_allocation",
+    "player_rating",
+    "home_player_rating",
+    "away_player_rating"
 ]
 
 config_cols = ["season", "game", "date", "home_team", "away_team", "target", "matchday"]
