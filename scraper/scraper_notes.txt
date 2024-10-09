@@ -96,3 +96,52 @@ FRA-Ligue 1 | 2122
 FRA-Ligue 1 | 2223 
  WhoScored Team Diff: set() 
  Understat Team Diff: set() 
+FRA-Ligue 1 | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1718 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1718 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1819 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1920 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 1718 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 1718 
+ Betting Data Unavailable (must download manually) 
+ITA-Serie A | 1819 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 1920 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
