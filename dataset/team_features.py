@@ -40,7 +40,7 @@ class TeamFeatures:
         features_df = self._calculate_metric_features(features_df)
 
         if self.metrics_calc:
-            features_df = self._calculate_elo(features_df, k_rate)
+            features_df = self._calculate_elo(features_df, self.k_rate)
 
         features_df = self._get_proper_cols(features_df)
         # self._filter_features(features_df)
@@ -163,28 +163,36 @@ class TeamFeatures:
 
                         # Determine expected and actual metrics
                         if metric.split("_")[-1] == "season":
-                            if metric.split("_")[-2] == "conceded":
-                                expected_metric_name = (
-                                    f"{ind}_{ind}_{core_metric}_conceded"
-                                )
-                                actual_metric_name = f"{opp_ind}_{core_metric}"
-                            else:
-                                expected_metric_name = (
-                                    f"{opp_ind}_{opp_ind}_{core_metric}_conceded"
-                                )
+                            if core_metric == "ppda":
                                 actual_metric_name = f"{ind}_{core_metric}"
+                                expected_metric_name = f"{ind}_{ind}_{core_metric}"
+                            else:
+                                if metric.split("_")[-2] == "conceded":
+                                    expected_metric_name = (
+                                        f"{ind}_{ind}_{core_metric}_conceded"
+                                    )
+                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                else:
+                                    expected_metric_name = (
+                                        f"{opp_ind}_{opp_ind}_{core_metric}_conceded"
+                                    )
+                                    actual_metric_name = f"{ind}_{core_metric}"
 
                         elif metric.split("_")[-1] == "lookback":
-                            if metric.split("_")[-2] == "conceded":
-                                expected_metric_name = (
-                                    f"last_3_{ind}_{core_metric}_conceded"
-                                )
-                                actual_metric_name = f"{opp_ind}_{core_metric}"
-                            else:
-                                expected_metric_name = (
-                                    f"last_3_{opp_ind}_{core_metric}_conceded"
-                                )
+                            if core_metric == "ppda":
                                 actual_metric_name = f"{ind}_{core_metric}"
+                                expected_metric_name = f"last_3_{ind}_{core_metric}"
+                            else:
+                                if metric.split("_")[-2] == "conceded":
+                                    expected_metric_name = (
+                                        f"last_3_{ind}_{core_metric}_conceded"
+                                    )
+                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                else:
+                                    expected_metric_name = (
+                                        f"last_3_{opp_ind}_{core_metric}_conceded"
+                                    )
+                                    actual_metric_name = f"{ind}_{core_metric}"
 
                         # Retrieve the expected and actual values
                         expected = row[expected_metric_name]
@@ -486,7 +494,8 @@ elo_metrics = [
     "elo_vaep_lookback",
     "elo_vaep_conceded_season",
     "elo_vaep_conceded_lookback",
-    # "elo_ppda_lookback",
+    "elo_ppda_lookback",
+    "elo_ppda_season",
 ]
 
 metrics = [
