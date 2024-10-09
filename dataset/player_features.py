@@ -6,7 +6,6 @@ import numpy as np
 from unidecode import unidecode
 import statistics
 
-
 class PlayerFeatures:
 
     def __init__(self, season_data: Season, lookback=3):
@@ -26,8 +25,17 @@ class PlayerFeatures:
         features_df["h_a"] = features_df.apply(
             lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
         )
+
+        # gets ratings from ratings table
+        player_ratings = self.season.player_ratings
+        features_df = features_df.merge(player_ratings[['player', 'game', 'team', 'rating']], how='left', on=['game', 'team', 'player'])
+        features_df.rating.fillna(6, inplace=True)
+
         features_df = self._fix_positions(features_df)
         features_df = self._calculate_features(features_df)
+
+        
+
         return features_df
 
     def _get_vaep(self, features_df):
@@ -89,21 +97,25 @@ class PlayerFeatures:
                     season_vaep = np.nan
                     season_xg = np.nan
                     season_goals = np.nan
+                    season_rating = row.rating
 
                     lookback_vaep = np.nan
                     lookback_xg = np.nan
                     lookback_minutes = np.nan
                     lookback_goals = np.nan
+                    lookback_rating = row.rating
                     lookback_conceded = np.nan
                 else:
                     cons = statistics.stdev(seasonal_table.minutes) / statistics.mean(seasonal_table.minutes)
                     season_vaep = statistics.mean(seasonal_table.vaep_value)
                     season_xg = statistics.mean(seasonal_table.xg)
                     season_goals = sum(seasonal_table.goals)
+                    season_rating = statistics.mean(seasonal_table.rating)
 
                     lookback_vaep = statistics.mean(lookback_table.vaep_value)
                     lookback_xg = statistics.mean(lookback_table.xg)
                     lookback_goals = sum(lookback_table.goals)
+                    lookback_rating = statistics.mean(lookback_table.rating)
 
                     if row.h_a == 'home':
                         def_3 = lookback_home.to_frame(name='id').merge(seasonal_table, how='left', left_on='id', right_on='game')
@@ -121,12 +133,14 @@ class PlayerFeatures:
                 features.at[i, 'season_vaep'] = season_vaep
                 features.at[i, 'season_xg'] = season_xg
                 features.at[i, 'season_goals'] = season_goals
+                features.at[i, 'season_rating'] = season_rating
 
                 features.at[i, 'lookback_minutes'] = lookback_minutes
                 features.at[i, 'lookback_vaep'] = lookback_vaep
                 features.at[i, 'lookback_xg'] = lookback_xg
                 features.at[i, 'lookback_xg_conceded'] = lookback_conceded
                 features.at[i, 'lookback_goals'] = lookback_goals
+                features.at[i, 'lookback_rating'] = lookback_rating
 
         return features
 
@@ -155,6 +169,7 @@ class PlayerFeatures:
     def _match_player_names(self, features_df):
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
         self.events.player = self.events.player.apply(lambda x: unidecode(x))
+        self.season.player_ratings.player = self.season.player_ratings.player.apply(lambda x: unidecode(x))
 
         # self.season.missing_players.player = self.season.missing_players.player.apply(
         #     lambda x: unidecode(x)
