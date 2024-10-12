@@ -204,19 +204,42 @@ class TeamFeatures:
 
                         elif metric.split("_")[1] == "gen":
                             opp_team = row[f"{opp_ind}_team"]
-                            opp_lm = (
-                                feats[
-                                    (feats["home_team"] == opp_team)
-                                    | (feats["away_team"] == opp_team)
-                                ]
-                                .loc[:i]
-                                .iloc[:-1]
-                                .iloc[-1]
-                            )
-                            opp_lm_ind = (
-                                "home" if opp_lm.home_team == opp_team else "away"
-                            )
-                            opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
+
+                            if metric.split("_")[-1] == "venue":
+                                prev_ven_matches = prev_matches[
+                                    prev_matches[f"{ind}_team"] == team
+                                ].iloc[-1]
+                                old_elo = prev_ven_matches[f"{ind}_{metric}"]
+
+                                opp_lm = (
+                                    feats[(feats[f"{opp_ind}_team"] == opp_team)]
+                                    .loc[:i]
+                                    .iloc[:-1]
+                                    .iloc[-1]
+                                )
+                                opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
+
+                            else:
+
+                                opp_lm = (
+                                    feats[
+                                        (feats["home_team"] == opp_team)
+                                        | (feats["away_team"] == opp_team)
+                                    ]
+                                    .loc[:i]
+                                    .iloc[:-1]
+                                    .iloc[-1]
+                                )
+                                opp_lm_ind = (
+                                    "home" if opp_lm.home_team == opp_team else "away"
+                                )
+                                opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
+
+                            # home field advantage
+                            if ind == "home":
+                                old_elo += 50
+                            else:
+                                opp_old_elo += 50
 
                             expected = 1 / (1 + 10 ** ((opp_old_elo - old_elo) / 400))
                             actual = (
@@ -543,6 +566,7 @@ elo_metrics = [
     "elo_ppda_lookback",
     "elo_ppda_season",
     "elo_gen",
+    "elo_gen_venue",
 ]
 
 metrics = [
