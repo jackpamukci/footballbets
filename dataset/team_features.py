@@ -33,6 +33,14 @@ class TeamFeatures:
         self.metrics_calc = False
 
         features_df = self.season.team_stats.copy()
+        features_df = self._process_features(features_df)
+
+        # self._filter_features(features_df)
+        # features_df = self._normalize_features(features_df)
+
+        self.features = features_df
+
+    def _process_features(self, features_df):
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
         features_df = self._get_min_allocation(features_df)
@@ -43,10 +51,8 @@ class TeamFeatures:
             features_df = self._calculate_elo(features_df, self.k_rate)
 
         features_df = self._get_proper_cols(features_df)
-        # self._filter_features(features_df)
-        # features_df = self._normalize_features(features_df)
 
-        self.features = features_df
+        return features_df
 
     def _normalize_features(self, feats):
         if self.use_dist == True:
@@ -154,7 +160,9 @@ class TeamFeatures:
                         old_elo = last_match[f"{lm_ind}_{metric}"]
 
                         # Determine the core metric based on the type
-                        if metric.split("_")[2] == "xg":
+                        if metric.split("_")[1] == "gen":
+                            core_metric = "gen"
+                        elif metric.split("_")[2] == "xg":
                             core_metric = "np_xg"
                         elif metric.split("_")[1] == "vaep":
                             core_metric = "vaep"
@@ -194,6 +202,37 @@ class TeamFeatures:
                                     )
                                     actual_metric_name = f"{ind}_{core_metric}"
 
+                        elif metric.split("_")[1] == "gen":
+                            opp_team = row[f"{opp_ind}_team"]
+                            opp_lm = (
+                                feats[
+                                    (feats["home_team"] == opp_team)
+                                    | (feats["away_team"] == opp_team)
+                                ]
+                                .loc[:i]
+                                .iloc[:-1]
+                                .iloc[-1]
+                            )
+                            opp_lm_ind = (
+                                "home" if opp_lm.home_team == opp_team else "away"
+                            )
+                            opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
+
+                            expected = 1 / (1 + 10 ** ((opp_old_elo - old_elo) / 400))
+                            actual = (
+                                1
+                                if (row["home_team"] == team and row.target == 1)
+                                else (
+                                    0
+                                    if (row[f"away_team"] == team and row.target == 1)
+                                    else 0.5
+                                )
+                            )
+                            feats.at[i, f"{ind}_{metric}"] = old_elo + (
+                                k_rate * (actual - expected)
+                            )
+                            continue
+
                         # Retrieve the expected and actual values
                         expected = row[expected_metric_name]
                         actual = row[actual_metric_name]
@@ -209,6 +248,13 @@ class TeamFeatures:
                         feats.at[i, f"{ind}_{metric}"] = old_elo + (
                             k_rate * (actual - expected)
                         )
+
+        # for team in feats["home_team"].unique():
+        #     team_data = team_games_cache[team]
+        #     for x, match in team_data.iterrows():
+        #         last_match = prev_matches.iloc[-1]
+        #         lm_ind = "home" if last_match.home_team == team else "away"
+        #         old_elo = last_match[f"{lm_ind}_{metric}"]
 
         return feats
 
@@ -270,7 +316,7 @@ class TeamFeatures:
             left_on="game",
             how="inner",
         )
-        return feats
+        return feats.drop(cols_to_drop, axis=1)
 
     def _get_min_allocation(self, feats):
         lineups = self.season.player_stats
@@ -400,20 +446,20 @@ class TeamFeatures:
         feats["target"] = targets
 
         return feats
-    
+
     def _get_average_rating(self, feats):
         player_ratings = self.season.player_ratings
         player_ratings["h_a"] = player_ratings.apply(
-                    lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
-                )
-        ratings_groups = player_ratings.groupby('game')
+            lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
+        )
+        ratings_groups = player_ratings.groupby("game")
 
         for i, row in feats.iterrows():
             ratings = ratings_groups.get_group(row.game)
-            home_ratings = ratings[ratings['h_a'] == 'home'].rating.mean()
-            away_ratings = ratings[ratings['h_a'] == 'away'].rating.mean()
-            feats.at[i, 'home_player_rating'] = home_ratings
-            feats.at[i, 'away_player_rating'] = away_ratings
+            home_ratings = ratings[ratings["h_a"] == "home"].rating.mean()
+            away_ratings = ratings[ratings["h_a"] == "away"].rating.mean()
+            feats.at[i, "home_player_rating"] = home_ratings
+            feats.at[i, "away_player_rating"] = away_ratings
 
         return feats
 
@@ -482,7 +528,7 @@ cols_to_drop = [
     "home_min_allocation",
     "away_min_allocation",
     "home_player_rating",
-    "away_player_rating"
+    "away_player_rating",
 ]
 
 elo_metrics = [
@@ -496,6 +542,7 @@ elo_metrics = [
     "elo_vaep_conceded_lookback",
     "elo_ppda_lookback",
     "elo_ppda_season",
+    "elo_gen",
 ]
 
 metrics = [
@@ -526,10 +573,12 @@ metrics = [
     "min_allocation",
     "player_rating",
     "home_player_rating",
-    "away_player_rating"
+    "away_player_rating",
 ]
 
 config_cols = ["season", "game", "date", "home_team", "away_team", "target", "matchday"]
+
+
 last_3 = [
     f"last_3_{x}_{y}"
     for x in ["home", "away"]
