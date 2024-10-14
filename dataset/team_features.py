@@ -142,7 +142,9 @@ class TeamFeatures:
                     if column_name not in feats.columns:
                         feats[column_name] = 1500
 
-                    if games_played < self.lookback - 1:
+                    if (games_played < 1) or (
+                        games_played < 3 and metric.split("_")[-1] == "venue"
+                    ):
                         continue
 
                     else:
@@ -157,6 +159,7 @@ class TeamFeatures:
                         )
                         last_match = prev_matches.iloc[-1]
                         lm_ind = "home" if last_match.home_team == team else "away"
+                        lm_opp_ind = "home" if lm_ind == "away" else "away"
                         old_elo = last_match[f"{lm_ind}_{metric}"]
 
                         # Determine the core metric based on the type
@@ -172,35 +175,35 @@ class TeamFeatures:
                         # Determine expected and actual metrics
                         if metric.split("_")[-1] == "season":
                             if core_metric == "ppda":
-                                actual_metric_name = f"{ind}_{core_metric}"
-                                expected_metric_name = f"{ind}_{ind}_{core_metric}"
+                                actual_metric_name = f"{lm_ind}_{core_metric}"
+                                expected_metric_name = (
+                                    f"{lm_ind}_{lm_ind}_{core_metric}"
+                                )
                             else:
                                 if metric.split("_")[-2] == "conceded":
                                     expected_metric_name = (
-                                        f"{ind}_{ind}_{core_metric}_conceded"
+                                        f"{lm_ind}_{lm_ind}_{core_metric}_conceded"
                                     )
-                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                    actual_metric_name = f"{lm_opp_ind}_{core_metric}"
                                 else:
-                                    expected_metric_name = (
-                                        f"{opp_ind}_{opp_ind}_{core_metric}_conceded"
-                                    )
-                                    actual_metric_name = f"{ind}_{core_metric}"
+                                    expected_metric_name = f"{lm_opp_ind}_{lm_opp_ind}_{core_metric}_conceded"
+                                    actual_metric_name = f"{lm_ind}_{core_metric}"
 
                         elif metric.split("_")[-1] == "lookback":
                             if core_metric == "ppda":
-                                actual_metric_name = f"{ind}_{core_metric}"
-                                expected_metric_name = f"last_3_{ind}_{core_metric}"
+                                actual_metric_name = f"{lm_ind}_{core_metric}"
+                                expected_metric_name = f"last_3_{lm_ind}_{core_metric}"
                             else:
                                 if metric.split("_")[-2] == "conceded":
                                     expected_metric_name = (
-                                        f"last_3_{ind}_{core_metric}_conceded"
+                                        f"last_3_{lm_ind}_{core_metric}_conceded"
                                     )
-                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                    actual_metric_name = f"{lm_opp_ind}_{core_metric}"
                                 else:
                                     expected_metric_name = (
-                                        f"last_3_{opp_ind}_{core_metric}_conceded"
+                                        f"last_3_{lm_opp_ind}_{core_metric}_conceded"
                                     )
-                                    actual_metric_name = f"{ind}_{core_metric}"
+                                    actual_metric_name = f"{lm_ind}_{core_metric}"
 
                         elif metric.split("_")[1] == "gen":
                             opp_team = row[f"{opp_ind}_team"]
@@ -219,6 +222,22 @@ class TeamFeatures:
                                 )
                                 opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
 
+                                actual = (
+                                    1
+                                    if (
+                                        prev_ven_matches["home_team"] == team
+                                        and prev_ven_matches.target == 1
+                                    )
+                                    else (
+                                        0
+                                        if (
+                                            prev_ven_matches[f"away_team"] == team
+                                            and prev_ven_matches.target == 1
+                                        )
+                                        else 0.5
+                                    )
+                                )
+
                             else:
 
                                 opp_lm = (
@@ -235,6 +254,22 @@ class TeamFeatures:
                                 )
                                 opp_old_elo = opp_lm[f"{opp_lm_ind}_{metric}"]
 
+                                actual = (
+                                    1
+                                    if (
+                                        last_match["home_team"] == team
+                                        and last_match.target == 1
+                                    )
+                                    else (
+                                        0
+                                        if (
+                                            last_match[f"away_team"] == team
+                                            and last_match.target == 1
+                                        )
+                                        else 0.5
+                                    )
+                                )
+
                             # home field advantage
                             if ind == "home":
                                 old_elo += 50
@@ -242,42 +277,20 @@ class TeamFeatures:
                                 opp_old_elo += 50
 
                             expected = 1 / (1 + 10 ** ((opp_old_elo - old_elo) / 400))
-                            actual = (
-                                1
-                                if (row["home_team"] == team and row.target == 1)
-                                else (
-                                    0
-                                    if (row[f"away_team"] == team and row.target == 1)
-                                    else 0.5
-                                )
-                            )
+
                             feats.at[i, f"{ind}_{metric}"] = old_elo + (
                                 k_rate * (actual - expected)
                             )
                             continue
 
                         # Retrieve the expected and actual values
-                        expected = row[expected_metric_name]
-                        actual = row[actual_metric_name]
-
-                        # # Check if expected or actual is NaN, which can occur if data is missing
-                        # if pd.isna(expected) or pd.isna(actual):
-                        #     feats.at[i, f"{ind}_{metric}"] = (
-                        #         old_elo  # Keep the old Elo rating unchanged
-                        #     )
-                        #     continueg
+                        expected = last_match[expected_metric_name]
+                        actual = last_match[actual_metric_name]
 
                         # Update the Elo rating based on the actual vs expected values
                         feats.at[i, f"{ind}_{metric}"] = old_elo + (
                             k_rate * (actual - expected)
                         )
-
-        # for team in feats["home_team"].unique():
-        #     team_data = team_games_cache[team]
-        #     for x, match in team_data.iterrows():
-        #         last_match = prev_matches.iloc[-1]
-        #         lm_ind = "home" if last_match.home_team == team else "away"
-        #         old_elo = last_match[f"{lm_ind}_{metric}"]
 
         return feats
 
