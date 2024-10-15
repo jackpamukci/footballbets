@@ -43,9 +43,6 @@ class Season:
 
         print("process data")
         self._process_event_data()
-        # self._process_team_names()
-        # self._process_player_names()
-        # print(_config.TEAMNAME_REPLACEMENTS)
 
     def _process_event_data(self):
         self.events = spadl.add_names(self.events)
@@ -66,6 +63,8 @@ class Season:
         self.events["prevEvent"] = self.events.shift(1, fill_value=0)["type_name"]
         self.events["nextEvent"] = self.events.shift(-1, fill_value=0)["type_name"]
         self.events["nextTeamId"] = self.events.shift(-1, fill_value=0)["team_id"]
+
+        self.events = self.events.dropna(subset="game_id")
 
         self.events = utils.get_season_possessions(self.events)
 

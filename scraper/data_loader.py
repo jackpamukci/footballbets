@@ -12,7 +12,6 @@ from pathlib import Path
 
 
 supported_leagues = [
-    "ENG-Premier League",
     "ESP-La Liga",
     "FRA-Ligue 1",
     "GER-Bundesliga",
@@ -48,21 +47,21 @@ class HistoricData:
 
         self.understat = sd.Understat(leagues=self.league_id, seasons=self.season_id)
 
-        self.schedule = self._get_league_schedule().iloc[:num_games]
+        self.schedule = self._get_league_schedule()
 
         logging.info(len(self.schedule))
 
-        self._load_event_data()
+        # self._load_event_data()
         self._load_player_ratings()
-        self._load_player_match_stats()
-        self._load_team_match_data()
-        try:
-            self._load_odds()
-        except:
-            with open("scraper_notes.txt", "a") as file:
-                file.write(
-                    f"{self.league_id} | {self.season_id} \n Betting Data Unavailable (must download manually) \n"
-                )
+        # self._load_player_match_stats()
+        # self._load_team_match_data()
+        # try:
+        #     self._load_odds()
+        # except:
+        #     with open("scraper_notes.txt", "a") as file:
+        #         file.write(
+        #             f"{self.league_id} | {self.season_id} \n Betting Data Unavailable (must download manually) \n"
+        #         )
 
     def _load_event_data(self):
         game_ids = list(self.schedule.ws_game_id)
@@ -277,8 +276,9 @@ class HistoricData:
 
 def main():
 
-    for league in supported_leagues:
-        for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+    # for league in supported_leagues:
+    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+        for league in supported_leagues:
             HistoricData(season_id=season, league_id=league)
 
 

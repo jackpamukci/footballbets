@@ -167,6 +167,7 @@ def get_season_possessions(spadldf):
     game_ids = spadldf.game_id.unique()
     for id in tqdm(game_ids):
         match_events = spadldf[spadldf["game_id"] == id]
+
         match_home_id = match_events.home_team_id.iloc[0]
 
         match_events = get_match_possessions(match_events)

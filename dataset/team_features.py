@@ -15,6 +15,7 @@ class TeamFeatures:
         lookback: int = 3,
         k_rate: int = 20,
         use_diff: bool = False,
+        use_dist: bool = True,
         feat_group: list = ["last_cols", "momentum", "venue", "general"],
     ):
 
@@ -26,29 +27,11 @@ class TeamFeatures:
         self.k_rate = k_rate
         self.metrics = metrics
         self.elo_metrics = elo_metrics
-        self.use_dist = season_data.get_dist
+        self.use_dist = use_dist
         self.use_diff = use_diff
         self.feat_group = feat_group
 
         self.metrics_calc = False
-
-        # self.last_cols_diff = [
-        #     f"last_{self.lookback}_diff_{metric}"
-        #     for metric in [
-        #         "_".join(x.split("_")[3:])
-        #         for x in last_cols
-        #         if x.split("_")[2] == "home"
-        #     ]
-        # ]
-
-        # self.momentum_cols_diff = [
-        #     f"last_{self.lookback}_diff_{metric}"
-        #     for metric in [
-        #         "_".join(x.split("_")[3:])
-        #         for x in momentum
-        #         if x.split("_")[2] == "home"
-        #     ]
-        # ]
 
         features_df = self.season.team_stats.copy()
         features_df = self._process_features(features_df)
@@ -56,6 +39,11 @@ class TeamFeatures:
         self.features = features_df
 
     def _process_features(self, features_df):
+
+        # sanity check for missing data
+        fixture_list = self.season.events.fixture.unique()
+        features_df = features_df[features_df.game.isin(fixture_list)]
+
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
         features_df = self._get_min_allocation(features_df)
@@ -72,7 +60,17 @@ class TeamFeatures:
 
     def _normalize_features(self, feats):
         if self.use_dist == True:
-            config_cols.append("distance")
+            config_cols = config_cols = [
+                "season",
+                "game",
+                "date",
+                "home_team",
+                "away_team",
+                "target",
+                "matchday",
+                "lookback",
+                "distance",
+            ]
         config = feats[config_cols]
 
         cols = self.feat_group
@@ -364,6 +362,9 @@ class TeamFeatures:
                     if metric.split("_")[0] == ind:
                         # Handle home/away specific metrics
                         ven_games = team_games[team_games[f"{ind}_team"] == team]
+
+                        if len(ven_games) < 1:
+                            continue
                         feats.at[i, f"{ind}_{metric}"] = (
                             self._calculate_team_performance(ven_games, metric, ind)
                         )
@@ -472,11 +473,7 @@ class TeamFeatures:
         else:
             metric_perf = ven_games[f'{ind}_{metric.split("_", 1)[1]}']
 
-        return (
-            statistics.mean(metric_perf)
-            if len(metric_perf) > 1
-            else metric_perf.iloc[-1]
-        )
+        return statistics.mean(metric_perf)
 
     def _calculate_last_performances(self, lookback_matches, metric, row, ind):
         metric_perf = []
@@ -505,8 +502,18 @@ class TeamFeatures:
         targets = []
 
         for i, row in tqdm(feats.iterrows(), total=feats.shape[0]):
+            games_to_drop = []
             fixture = row.game
-            events = match_events.get_group(fixture)
+            try:
+                events = match_events.get_group(fixture)
+            except:
+                games_to_drop.append(i)
+                home_vaep.append(0)
+                away_vaep.append(0)
+                home_shots.append(0)
+                away_shots.append(0)
+                targets.append(0)
+                continue
             events = events.sort_values(["period_id", "time_seconds"], ascending=True)
             events["ha"] = np.where(
                 events.team_id == events.home_team_id, "home", "away"
@@ -531,10 +538,11 @@ class TeamFeatures:
         feats["away_shots"] = away_shots
         feats["target"] = targets
 
-        return feats
+        return feats.drop(games_to_drop).reset_index(drop=True)
 
     def _get_average_rating(self, feats):
         player_ratings = self.season.player_ratings
+        # print(player_ratings.columns)
         player_ratings["h_a"] = player_ratings.apply(
             lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
         )
@@ -674,11 +682,11 @@ config_cols = [
 ]
 
 
-venue_diff_cols = [
-    f"venue_diff_{x}"
-    for x in ["_".join(x.split("_")[2:]) for x in venue if x.split("_")[0] == "home"]
-]
-general_diff_cols = [
-    f"gen_diff_{x}"
-    for x in ["_".join(x.split("_")[1:]) for x in general if x.split("_")[0] == "home"]
-]
+# venue_diff_cols = [
+#     f"venue_diff_{x}"
+#     for x in ["_".join(x.split("_")[2:]) for x in venue if x.split("_")[0] == "home"]
+# ]
+# general_diff_cols = [
+#     f"gen_diff_{x}"
+#     for x in ["_".join(x.split("_")[1:]) for x in general if x.split("_")[0] == "home"]
+# ]
