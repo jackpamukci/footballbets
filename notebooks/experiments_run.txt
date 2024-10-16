@@ -1,0 +1,26 @@
+15:23:28 | feature_list: ['last_cols'] | normalization: True | differences: True 
+accuracy: 0.467 +- 0.009 | log loss: 1.063 +- 0.014 
+15:28:12 | feature_list: ['momentum'] | normalization: True | differences: True 
+accuracy: 0.439 +- 0.016 | log loss: 1.089 +- 0.021 
+15:33:29 | feature_list: ['venue'] | normalization: True | differences: True 
+accuracy: 0.466 +- 0.017 | log loss: 1.084 +- 0.033 
+15:38:05 | feature_list: ['general'] | normalization: True | differences: True 
+accuracy: 0.438 +- 0.01 | log loss: 2.834 +- 0.261 
+15:42:58 | feature_list: ['elo'] | normalization: True | differences: True 
+accuracy: 0.485 +- 0.01 | log loss: 1.036 +- 0.013 
+15:48:07 | feature_list: ['last_cols', 'momentum'] | normalization: True | differences: True 
+accuracy: 0.476 +- 0.015 | log loss: 1.048 +- 0.013 
+15:53:35 | feature_list: ['last_cols', 'venue'] | normalization: True | differences: True 
+accuracy: 0.495 +- 0.009 | log loss: 1.028 +- 0.011 
+15:59:04 | feature_list: ['last_cols', 'general'] | normalization: True | differences: True 
+accuracy: 0.492 +- 0.011 | log loss: 1.033 +- 0.013 
+16:04:10 | feature_list: ['last_cols', 'elo'] | normalization: True | differences: True 
+accuracy: 0.492 +- 0.013 | log loss: 1.027 +- 0.012 
+16:09:29 | feature_list: ['momentum', 'venue'] | normalization: True | differences: True 
+accuracy: 0.484 +- 0.017 | log loss: 1.034 +- 0.016 
+16:15:00 | feature_list: ['momentum', 'general'] | normalization: True | differences: True 
+accuracy: 0.475 +- 0.012 | log loss: 1.05 +- 0.015 
+16:20:21 | feature_list: ['momentum', 'elo'] | normalization: True | differences: True 
+accuracy: 0.486 +- 0.013 | log loss: 1.029 +- 0.01 
+16:25:34 | feature_list: ['venue', 'general'] | normalization: True | differences: True 
+accuracy: 0.479 +- 0.015 | log loss: 1.045 +- 0.014 
