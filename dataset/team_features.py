@@ -15,8 +15,9 @@ class TeamFeatures:
         lookback: int = 3,
         k_rate: int = 20,
         use_diff: bool = False,
-        use_dist: bool = True,
-        feat_group: list = ["last_cols", "momentum", "venue", "general"],
+        use_dist: bool = False,
+        normalize: bool = True,
+        feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
     ):
 
         self.met_col_list = None
@@ -29,6 +30,7 @@ class TeamFeatures:
         self.elo_metrics = elo_metrics
         self.use_dist = use_dist
         self.use_diff = use_diff
+        self.normalize = normalize
         self.feat_group = feat_group
 
         self.metrics_calc = False
@@ -59,58 +61,6 @@ class TeamFeatures:
         return features_df
 
     def _normalize_features(self, feats):
-        if self.use_dist == True:
-            config_cols = config_cols = [
-                "season",
-                "game",
-                "date",
-                "home_team",
-                "away_team",
-                "target",
-                "matchday",
-                "lookback",
-                "distance",
-            ]
-        config = feats[config_cols]
-
-        cols = self.feat_group
-        # if self.use_diff:
-        #     last_cols_diff = pd.DataFrame(
-        #         feats[[x for x in self.last_cols if x.split("_")[2] == "home"]].values
-        #         - feats[
-        #             [x for x in self.last_cols if x.split("_")[2] == "away"]
-        #         ].values,
-        #         columns=self.last_cols_diff,
-        #     )
-
-        #     momentum_diff = pd.DataFrame(
-        #         feats[[x for x in self.momentum if x.split("_")[2] == "home"]].values
-        #         - feats[[x for x in self.momentum if x.split("_")[2] == "away"]].values,
-        #         columns=self.momentum_cols_diff,
-        #     )
-
-        #     venue_diff = pd.DataFrame(
-        #         feats[[x for x in venue if x.split("_")[0] == "home"]].values
-        #         - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
-        #         columns=venue_diff_cols,
-        #     )
-
-        #     general_diff = pd.DataFrame(
-        #         feats[[x for x in general if x.split("_")[0] == "home"]].values
-        #         - feats[[x for x in general if x.split("_")[0] == "away"]].values,
-        #         columns=general_diff_cols,
-        #     )
-
-        #     diff_dict = {
-        #         "last_cols": last_cols_diff,
-        #         "momentum": momentum_diff,
-        #         "venue": venue_diff,
-        #         "general": general_diff,
-        #     }
-
-        #     diff_data = pd.concat([diff_dict[x] for x in self.feat_group], axis=1)
-
-        #     return pd.concat([config, diff_data], axis=1)
 
         last_cols = [
             f"last_{self.lookback}_{x}_{y}"
@@ -123,6 +73,7 @@ class TeamFeatures:
                 "vaep_conceded",
                 "ppda",
                 "min_allocation",
+                "player_rating",
             ]
         ]
 
@@ -136,7 +87,14 @@ class TeamFeatures:
         venue = [
             f"{x}_{x}_{y}"
             for x in ["home", "away"]
-            for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded", "ppda"]
+            for y in [
+                "np_xg",
+                "np_xg_conceded",
+                "vaep",
+                "vaep_conceded",
+                "ppda",
+                "player_rating",
+            ]
         ]
         general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
 
@@ -146,15 +104,118 @@ class TeamFeatures:
             for item in sublist
         ]
 
-        elo_list = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
+        elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
+        config = feats[config_cols]
 
-        self.met_col_list = col_list + elo_list
+        cols_dict = {
+            "last_cols": last_cols,
+            "momentum": momentum,
+            "venue": venue,
+            "general": general,
+            "elo": elo,
+        }
 
-        norm_features = feats.groupby("matchday", group_keys=False).apply(
-            self._scale_group
-        )
-        # ONly for testing! REMOVE feats[cols_to_drop]
-        return pd.concat([config, norm_features[self.met_col_list]], axis=1)
+        # cols = self.feat_group
+        if self.use_diff:
+            last_cols_diff = pd.DataFrame(
+                feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
+                - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in last_cols
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
+            )
+
+            momentum_diff = pd.DataFrame(
+                feats[[x for x in momentum if x.split("_")[2] == "home"]].values
+                - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in momentum
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
+            )
+
+            venue_diff = pd.DataFrame(
+                feats[[x for x in venue if x.split("_")[0] == "home"]].values
+                - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in venue
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
+            )
+
+            general_diff = pd.DataFrame(
+                feats[[x for x in general if x.split("_")[0] == "home"]].values
+                - feats[[x for x in general if x.split("_")[0] == "away"]].values,
+                columns=[
+                    f"general_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in general
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
+            )
+
+            elo_diff = pd.DataFrame(
+                feats[[x for x in elo if x.split("_")[0] == "home"]].values
+                - feats[[x for x in elo if x.split("_")[0] == "away"]].values,
+                columns=[
+                    f"elo_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in elo
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
+            )
+
+            diff_dict = {
+                "last_cols": last_cols_diff,
+                "momentum": momentum_diff,
+                "venue": venue_diff,
+                "general": general_diff,
+                "elo": elo_diff,
+            }
+
+            diff_data = pd.concat([diff_dict[x] for x in self.feat_group], axis=1)
+
+            self.met_col_list = diff_data.columns
+            features = pd.concat([config["matchday"], diff_data], axis=1)
+
+            if self.normalize:
+
+                features = (
+                    features.groupby("matchday", group_keys=False)
+                    .apply(self._scale_group)
+                    .drop("matchday", axis=1)
+                )
+
+            return pd.concat([config, features], axis=1)
+
+        self.met_col_list = [item for x in self.feat_group for item in cols_dict[x]]
+
+        if self.normalize:
+            features = feats[self.met_col_list + ["matchday"]]
+
+            features = features.groupby("matchday", group_keys=False).apply(
+                self._scale_group
+            )
+
+            return pd.concat([config, features], axis=1)
+        return pd.concat([config, feats[self.met_col_list]], axis=1)
 
     def _calculate_elo(self, feats, k_rate):
         """
@@ -529,7 +590,7 @@ class TeamFeatures:
             home_shots.append(shots_count.get("home", 0))
             away_shots.append(shots_count.get("away", 0))
             targets.append(
-                1 if row.home_points == 3 else (0 if row.home_points == 1 else -1)
+                1 if row.home_points == 3 else (0 if row.home_points == 1 else 2)
             )
 
         feats["home_vaep"] = home_vaep
