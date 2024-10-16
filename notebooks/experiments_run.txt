@@ -24,3 +24,9 @@ accuracy: 0.475 +- 0.012 | log loss: 1.05 +- 0.015
 accuracy: 0.486 +- 0.013 | log loss: 1.029 +- 0.01 
 16:25:34 | feature_list: ['venue', 'general'] | normalization: True | differences: True 
 accuracy: 0.479 +- 0.015 | log loss: 1.045 +- 0.014 
+16:30:32 | feature_list: ['venue', 'elo'] | normalization: True | differences: True 
+accuracy: 0.491 +- 0.015 | log loss: 1.023 +- 0.012 
+16:35:18 | feature_list: ['general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.489 +- 0.018 | log loss: 1.036 +- 0.021 
+16:40:43 | feature_list: ['last_cols', 'momentum', 'venue'] | normalization: True | differences: True 
+accuracy: 0.493 +- 0.012 | log loss: 1.033 +- 0.02 

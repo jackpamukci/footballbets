@@ -215,6 +215,7 @@ class TeamFeatures:
             )
 
             return pd.concat([config, features], axis=1)
+
         return pd.concat([config, feats[self.met_col_list]], axis=1)
 
     def _calculate_elo(self, feats, k_rate):
