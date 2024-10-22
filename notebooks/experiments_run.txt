@@ -30,3 +30,223 @@ accuracy: 0.491 +- 0.015 | log loss: 1.023 +- 0.012
 accuracy: 0.489 +- 0.018 | log loss: 1.036 +- 0.021 
 16:40:43 | feature_list: ['last_cols', 'momentum', 'venue'] | normalization: True | differences: True 
 accuracy: 0.493 +- 0.012 | log loss: 1.033 +- 0.02 
+16:46:27 | feature_list: ['last_cols', 'momentum', 'general'] | normalization: True | differences: True 
+accuracy: 0.489 +- 0.013 | log loss: 1.03 +- 0.013 
+16:52:18 | feature_list: ['last_cols', 'momentum', 'elo'] | normalization: True | differences: True 
+accuracy: 0.492 +- 0.019 | log loss: 1.024 +- 0.013 
+16:57:27 | feature_list: ['last_cols', 'venue', 'general'] | normalization: True | differences: True 
+accuracy: 0.492 +- 0.018 | log loss: 1.023 +- 0.013 
+17:02:09 | feature_list: ['last_cols', 'venue', 'elo'] | normalization: True | differences: True 
+accuracy: 0.497 +- 0.019 | log loss: 1.018 +- 0.012 
+17:06:48 | feature_list: ['last_cols', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.493 +- 0.015 | log loss: 1.02 +- 0.009 
+17:11:25 | feature_list: ['momentum', 'venue', 'general'] | normalization: True | differences: True 
+accuracy: 0.485 +- 0.016 | log loss: 1.029 +- 0.012 
+17:16:06 | feature_list: ['momentum', 'venue', 'elo'] | normalization: True | differences: True 
+accuracy: 0.493 +- 0.017 | log loss: 1.021 +- 0.012 
+17:20:45 | feature_list: ['momentum', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.487 +- 0.019 | log loss: 1.024 +- 0.013 
+17:25:23 | feature_list: ['venue', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.489 +- 0.01 | log loss: 1.02 +- 0.011 
+17:30:02 | feature_list: ['last_cols', 'momentum', 'venue', 'general'] | normalization: True | differences: True 
+accuracy: 0.495 +- 0.011 | log loss: 1.021 +- 0.007 
+17:34:44 | feature_list: ['last_cols', 'momentum', 'venue', 'elo'] | normalization: True | differences: True 
+accuracy: 0.494 +- 0.016 | log loss: 1.019 +- 0.011 
+17:39:26 | feature_list: ['last_cols', 'momentum', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.492 +- 0.014 | log loss: 1.022 +- 0.01 
+17:44:06 | feature_list: ['last_cols', 'venue', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.498 +- 0.012 | log loss: 1.022 +- 0.017 
+17:48:49 | feature_list: ['momentum', 'venue', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.489 +- 0.014 | log loss: 1.019 +- 0.01 
+17:53:31 | feature_list: ['last_cols', 'momentum', 'venue', 'general', 'elo'] | normalization: True | differences: True 
+accuracy: 0.498 +- 0.015 | log loss: 1.012 +- 0.011 
+17:58:06 | feature_list: ['last_cols'] | normalization: False | differences: True 
+accuracy: 0.468 +- 0.011 | log loss: 1.064 +- 0.012 
+18:02:44 | feature_list: ['momentum'] | normalization: False | differences: True 
+accuracy: 0.461 +- 0.012 | log loss: 1.072 +- 0.016 
+18:07:22 | feature_list: ['venue'] | normalization: False | differences: True 
+accuracy: 0.472 +- 0.015 | log loss: 1.072 +- 0.014 
+18:11:53 | feature_list: ['general'] | normalization: False | differences: True 
+accuracy: 0.453 +- 0.017 | log loss: 1.913 +- 0.239 
+18:16:32 | feature_list: ['elo'] | normalization: False | differences: True 
+accuracy: 0.493 +- 0.018 | log loss: 1.041 +- 0.013 
+18:21:13 | feature_list: ['last_cols', 'momentum'] | normalization: False | differences: True 
+accuracy: 0.483 +- 0.014 | log loss: 1.047 +- 0.015 
+18:25:52 | feature_list: ['last_cols', 'venue'] | normalization: False | differences: True 
+accuracy: 0.504 +- 0.013 | log loss: 1.024 +- 0.015 
+18:30:30 | feature_list: ['last_cols', 'general'] | normalization: False | differences: True 
+accuracy: 0.49 +- 0.013 | log loss: 1.041 +- 0.024 
+18:35:09 | feature_list: ['last_cols', 'elo'] | normalization: False | differences: True 
+accuracy: 0.498 +- 0.016 | log loss: 1.028 +- 0.011 
+18:39:45 | feature_list: ['momentum', 'venue'] | normalization: False | differences: True 
+accuracy: 0.493 +- 0.019 | log loss: 1.032 +- 0.013 
+18:44:24 | feature_list: ['momentum', 'general'] | normalization: False | differences: True 
+accuracy: 0.486 +- 0.016 | log loss: 1.04 +- 0.013 
+18:49:03 | feature_list: ['momentum', 'elo'] | normalization: False | differences: True 
+accuracy: 0.498 +- 0.017 | log loss: 1.032 +- 0.016 
+22:14:35 | feature_list: ['venue', 'general'] | normalization: False | differences: True 
+accuracy: 0.493 +- 0.016 | log loss: 1.037 +- 0.018 
+22:19:54 | feature_list: ['venue', 'elo'] | normalization: False | differences: True 
+accuracy: 0.506 +- 0.016 | log loss: 1.024 +- 0.011 
+22:24:53 | feature_list: ['general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.496 +- 0.014 | log loss: 1.032 +- 0.014 
+22:29:33 | feature_list: ['last_cols', 'momentum', 'venue'] | normalization: False | differences: True 
+accuracy: 0.5 +- 0.013 | log loss: 1.023 +- 0.012 
+22:34:27 | feature_list: ['last_cols', 'momentum', 'general'] | normalization: False | differences: True 
+accuracy: 0.503 +- 0.012 | log loss: 1.026 +- 0.014 
+22:39:22 | feature_list: ['last_cols', 'momentum', 'elo'] | normalization: False | differences: True 
+accuracy: 0.501 +- 0.019 | log loss: 1.022 +- 0.012 
+22:44:21 | feature_list: ['last_cols', 'venue', 'general'] | normalization: False | differences: True 
+accuracy: 0.507 +- 0.013 | log loss: 1.017 +- 0.016 
+22:49:00 | feature_list: ['last_cols', 'venue', 'elo'] | normalization: False | differences: True 
+accuracy: 0.509 +- 0.012 | log loss: 1.022 +- 0.017 
+22:53:46 | feature_list: ['last_cols', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.502 +- 0.011 | log loss: 1.023 +- 0.012 
+22:58:33 | feature_list: ['momentum', 'venue', 'general'] | normalization: False | differences: True 
+accuracy: 0.498 +- 0.019 | log loss: 1.024 +- 0.019 
+23:03:23 | feature_list: ['momentum', 'venue', 'elo'] | normalization: False | differences: True 
+accuracy: 0.502 +- 0.013 | log loss: 1.02 +- 0.015 
+23:08:09 | feature_list: ['momentum', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.497 +- 0.018 | log loss: 1.027 +- 0.013 
+23:12:58 | feature_list: ['venue', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.503 +- 0.015 | log loss: 1.019 +- 0.014 
+23:17:48 | feature_list: ['last_cols', 'momentum', 'venue', 'general'] | normalization: False | differences: True 
+accuracy: 0.51 +- 0.02 | log loss: 1.014 +- 0.015 
+23:22:47 | feature_list: ['last_cols', 'momentum', 'venue', 'elo'] | normalization: False | differences: True 
+accuracy: 0.51 +- 0.019 | log loss: 1.016 +- 0.012 
+23:27:48 | feature_list: ['last_cols', 'momentum', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.504 +- 0.019 | log loss: 1.019 +- 0.017 
+23:32:43 | feature_list: ['last_cols', 'venue', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.512 +- 0.017 | log loss: 1.015 +- 0.013 
+23:37:36 | feature_list: ['momentum', 'venue', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.507 +- 0.019 | log loss: 1.017 +- 0.012 
+23:42:31 | feature_list: ['last_cols', 'momentum', 'venue', 'general', 'elo'] | normalization: False | differences: True 
+accuracy: 0.508 +- 0.012 | log loss: 1.016 +- 0.016 
+23:47:23 | feature_list: ['last_cols'] | normalization: True | differences: False 
+accuracy: 0.474 +- 0.011 | log loss: 1.044 +- 0.009 
+23:52:20 | feature_list: ['momentum'] | normalization: True | differences: False 
+accuracy: 0.436 +- 0.014 | log loss: 1.073 +- 0.011 
+23:57:14 | feature_list: ['venue'] | normalization: True | differences: False 
+accuracy: 0.483 +- 0.013 | log loss: 1.04 +- 0.012 
+00:02:04 | feature_list: ['general'] | normalization: True | differences: False 
+accuracy: 0.435 +- 0.015 | log loss: 1.274 +- 0.07 
+00:07:01 | feature_list: ['elo'] | normalization: True | differences: False 
+accuracy: 0.492 +- 0.012 | log loss: 1.03 +- 0.009 
+00:11:39 | feature_list: ['last_cols', 'momentum'] | normalization: True | differences: False 
+accuracy: 0.482 +- 0.011 | log loss: 1.037 +- 0.007 
+00:16:48 | feature_list: ['last_cols', 'venue'] | normalization: True | differences: False 
+accuracy: 0.493 +- 0.013 | log loss: 1.025 +- 0.012 
+00:21:22 | feature_list: ['last_cols', 'general'] | normalization: True | differences: False 
+accuracy: 0.489 +- 0.013 | log loss: 1.028 +- 0.009 
+00:26:02 | feature_list: ['last_cols', 'elo'] | normalization: True | differences: False 
+accuracy: 0.496 +- 0.01 | log loss: 1.024 +- 0.01 
+00:30:31 | feature_list: ['momentum', 'venue'] | normalization: True | differences: False 
+accuracy: 0.491 +- 0.017 | log loss: 1.026 +- 0.01 
+00:35:05 | feature_list: ['momentum', 'general'] | normalization: True | differences: False 
+accuracy: 0.483 +- 0.015 | log loss: 1.036 +- 0.014 
+00:39:39 | feature_list: ['momentum', 'elo'] | normalization: True | differences: False 
+accuracy: 0.49 +- 0.012 | log loss: 1.027 +- 0.009 
+00:44:08 | feature_list: ['venue', 'general'] | normalization: True | differences: False 
+accuracy: 0.49 +- 0.018 | log loss: 1.03 +- 0.015 
+10:48:09 | feature_list: ['venue', 'elo'] | normalization: True | differences: False 
+accuracy: 0.499 +- 0.014 | log loss: 1.02 +- 0.011 
+10:53:54 | feature_list: ['general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.495 +- 0.011 | log loss: 1.021 +- 0.01 
+10:59:59 | feature_list: ['last_cols', 'momentum', 'venue'] | normalization: True | differences: False 
+accuracy: 0.499 +- 0.014 | log loss: 1.021 +- 0.01 
+11:05:47 | feature_list: ['last_cols', 'momentum', 'general'] | normalization: True | differences: False 
+accuracy: 0.489 +- 0.015 | log loss: 1.025 +- 0.009 
+11:11:36 | feature_list: ['last_cols', 'momentum', 'elo'] | normalization: True | differences: False 
+accuracy: 0.493 +- 0.014 | log loss: 1.022 +- 0.01 
+11:17:14 | feature_list: ['last_cols', 'venue', 'general'] | normalization: True | differences: False 
+accuracy: 0.498 +- 0.016 | log loss: 1.02 +- 0.01 
+11:22:52 | feature_list: ['last_cols', 'venue', 'elo'] | normalization: True | differences: False 
+accuracy: 0.502 +- 0.011 | log loss: 1.016 +- 0.011 
+11:28:22 | feature_list: ['last_cols', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.496 +- 0.016 | log loss: 1.02 +- 0.012 
+11:33:32 | feature_list: ['momentum', 'venue', 'general'] | normalization: True | differences: False 
+accuracy: 0.495 +- 0.017 | log loss: 1.023 +- 0.012 
+11:38:41 | feature_list: ['momentum', 'venue', 'elo'] | normalization: True | differences: False 
+accuracy: 0.499 +- 0.016 | log loss: 1.02 +- 0.011 
+11:44:45 | feature_list: ['momentum', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.494 +- 0.013 | log loss: 1.021 +- 0.012 
+11:50:42 | feature_list: ['venue', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.501 +- 0.014 | log loss: 1.019 +- 0.01 
+11:56:09 | feature_list: ['last_cols', 'momentum', 'venue', 'general'] | normalization: True | differences: False 
+accuracy: 0.501 +- 0.016 | log loss: 1.015 +- 0.009 
+13:45:32 | feature_list: ['last_cols', 'momentum', 'venue', 'elo'] | normalization: True | differences: False 
+accuracy: 0.498 +- 0.011 | log loss: 1.016 +- 0.008 
+13:51:15 | feature_list: ['last_cols', 'momentum', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.489 +- 0.014 | log loss: 1.023 +- 0.01 
+13:57:20 | feature_list: ['last_cols', 'venue', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.5 +- 0.013 | log loss: 1.021 +- 0.01 
+14:02:49 | feature_list: ['momentum', 'venue', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.49 +- 0.021 | log loss: 1.021 +- 0.013 
+14:08:01 | feature_list: ['last_cols', 'momentum', 'venue', 'general', 'elo'] | normalization: True | differences: False 
+accuracy: 0.495 +- 0.016 | log loss: 1.017 +- 0.009 
+14:13:27 | feature_list: ['last_cols'] | normalization: False | differences: False 
+accuracy: 0.478 +- 0.017 | log loss: 1.04 +- 0.011 
+14:18:24 | feature_list: ['momentum'] | normalization: False | differences: False 
+accuracy: 0.454 +- 0.014 | log loss: 1.06 +- 0.012 
+16:41:11 | feature_list: ['venue'] | normalization: False | differences: False 
+accuracy: 0.484 +- 0.012 | log loss: 1.041 +- 0.012 
+16:46:31 | feature_list: ['general'] | normalization: False | differences: False 
+accuracy: 0.444 +- 0.015 | log loss: 1.267 +- 0.073 
+16:51:54 | feature_list: ['elo'] | normalization: False | differences: False 
+accuracy: 0.493 +- 0.016 | log loss: 1.027 +- 0.015 
+16:56:51 | feature_list: ['last_cols', 'momentum'] | normalization: False | differences: False 
+accuracy: 0.475 +- 0.013 | log loss: 1.037 +- 0.011 
+17:02:03 | feature_list: ['last_cols', 'venue'] | normalization: False | differences: False 
+accuracy: 0.498 +- 0.015 | log loss: 1.019 +- 0.016 
+17:07:09 | feature_list: ['last_cols', 'general'] | normalization: False | differences: False 
+accuracy: 0.488 +- 0.014 | log loss: 1.027 +- 0.008 
+17:12:13 | feature_list: ['last_cols', 'elo'] | normalization: False | differences: False 
+accuracy: 0.494 +- 0.014 | log loss: 1.016 +- 0.016 
+17:17:39 | feature_list: ['momentum', 'venue'] | normalization: False | differences: False 
+accuracy: 0.497 +- 0.008 | log loss: 1.029 +- 0.013 
+17:22:47 | feature_list: ['momentum', 'general'] | normalization: False | differences: False 
+accuracy: 0.481 +- 0.015 | log loss: 1.04 +- 0.011 
+17:28:04 | feature_list: ['momentum', 'elo'] | normalization: False | differences: False 
+accuracy: 0.495 +- 0.014 | log loss: 1.029 +- 0.014 
+17:33:34 | feature_list: ['venue', 'general'] | normalization: False | differences: False 
+accuracy: 0.493 +- 0.013 | log loss: 1.025 +- 0.01 
+17:39:22 | feature_list: ['venue', 'elo'] | normalization: False | differences: False 
+accuracy: 0.504 +- 0.014 | log loss: 1.017 +- 0.013 
+17:45:22 | feature_list: ['general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.501 +- 0.016 | log loss: 1.018 +- 0.012 
+17:51:09 | feature_list: ['last_cols', 'momentum', 'venue'] | normalization: False | differences: False 
+accuracy: 0.502 +- 0.014 | log loss: 1.017 +- 0.011 
+17:56:27 | feature_list: ['last_cols', 'momentum', 'general'] | normalization: False | differences: False 
+accuracy: 0.484 +- 0.017 | log loss: 1.029 +- 0.013 
+18:01:54 | feature_list: ['last_cols', 'momentum', 'elo'] | normalization: False | differences: False 
+accuracy: 0.496 +- 0.012 | log loss: 1.021 +- 0.01 
+18:07:26 | feature_list: ['last_cols', 'venue', 'general'] | normalization: False | differences: False 
+accuracy: 0.505 +- 0.01 | log loss: 1.013 +- 0.012 
+18:13:15 | feature_list: ['last_cols', 'venue', 'elo'] | normalization: False | differences: False 
+accuracy: 0.503 +- 0.014 | log loss: 1.016 +- 0.011 
+18:19:16 | feature_list: ['last_cols', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.505 +- 0.016 | log loss: 1.013 +- 0.011 
+18:25:31 | feature_list: ['momentum', 'venue', 'general'] | normalization: False | differences: False 
+accuracy: 0.5 +- 0.013 | log loss: 1.025 +- 0.012 
+18:31:22 | feature_list: ['momentum', 'venue', 'elo'] | normalization: False | differences: False 
+accuracy: 0.502 +- 0.012 | log loss: 1.019 +- 0.011 
+18:37:03 | feature_list: ['momentum', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.494 +- 0.011 | log loss: 1.022 +- 0.012 
+18:43:11 | feature_list: ['venue', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.496 +- 0.013 | log loss: 1.017 +- 0.011 
+18:49:04 | feature_list: ['last_cols', 'momentum', 'venue', 'general'] | normalization: False | differences: False 
+accuracy: 0.5 +- 0.013 | log loss: 1.018 +- 0.011 
+18:55:15 | feature_list: ['last_cols', 'momentum', 'venue', 'elo'] | normalization: False | differences: False 
+accuracy: 0.503 +- 0.017 | log loss: 1.014 +- 0.012 
+19:00:27 | feature_list: ['last_cols', 'momentum', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.503 +- 0.015 | log loss: 1.016 +- 0.009 
+19:06:13 | feature_list: ['last_cols', 'venue', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.505 +- 0.01 | log loss: 1.016 +- 0.013 
+19:11:51 | feature_list: ['momentum', 'venue', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.503 +- 0.013 | log loss: 1.015 +- 0.012 
+19:17:57 | feature_list: ['last_cols', 'momentum', 'venue', 'general', 'elo'] | normalization: False | differences: False 
+accuracy: 0.506 +- 0.012 | log loss: 1.013 +- 0.012 
+
+Best Experiment:
+19:17:57 | feature_list: ['last_cols', 'momentum', 'venue', 'general', 'elo'] | normalization: False | differences: False
+accuracy: 0.506 +- 0.012 | log loss: 1.013 +- 0.012
