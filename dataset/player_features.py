@@ -54,6 +54,30 @@ class PlayerFeatures:
             .reset_index()
         )
 
+        def_sum = (
+            sorted_events[
+                (
+                    sorted_events["type_name"].isin(
+                        ["tackle", "interception", "keeper_save"]
+                    )
+                )
+            ]
+            .rename(
+                columns={
+                    "offensive_value": "offensive_value_def",
+                    "defensive_value": "defensive_value_def",
+                    "vaep_value": "vaep_value_def",
+                }
+            )
+            .groupby(["fixture", "player"])[
+                ["vaep_value_def", "offensive_value_def", "defensive_value_def"]
+            ]
+            .sum()
+            .reset_index()
+        )
+
+        vaep_sum = vaep_sum.merge(def_sum, how="left", on=["fixture", "player"])
+
         # Merge the vaep_sum with features_df only once
         results = features_df.merge(
             vaep_sum,
@@ -122,25 +146,37 @@ class PlayerFeatures:
                     if len(seasonal_table) <= 1:
                         cons = 1
                         season_vaep = row.vaep_value
+                        season_vaep_var = 0
                         season_vaep_per90 = 0
                         season_xg = row.xg
                         season_xg_per90 = 0
+                        season_xg_var = 0
                         season_goals = row.goals
                         season_rating = 0
+                        season_rating_var = 0
+                        season_def_vaep = 0
 
                         lookback_vaep = row.vaep_value
                         lookback_vaep_per90 = 0
+                        lookback_vaep_var = 0
                         lookback_xg = row.xg
                         lookback_xg_per90 = 0
+                        lookback_xg_var = 0
                         lookback_minutes = row.minutes
                         lookback_goals = row.goals
                         lookback_conceded = 0
                         lookback_rating = 0
+                        lookback_rating_var = 0
+                        lookback_def_vaep = 0
                 else:
                     cons = statistics.stdev(seasonal_table.minutes) / statistics.mean(
                         seasonal_table.minutes
                     )
                     season_vaep = statistics.mean(seasonal_table.vaep_value)
+                    season_vaep_var = 1 / (
+                        statistics.stdev(seasonal_table.vaep_value)
+                        / statistics.mean(seasonal_table.vaep_value)
+                    )
                     season_vaep_per90 = (sum(seasonal_table.vaep_value) * 90) / sum(
                         seasonal_table.minutes
                     )
@@ -148,19 +184,71 @@ class PlayerFeatures:
                     season_xg_per90 = (sum(seasonal_table.xg) * 90) / sum(
                         seasonal_table.minutes
                     )
+                    season_xg_var = (
+                        1
+                        / (
+                            statistics.stdev(seasonal_table.xg)
+                            / statistics.mean(seasonal_table.xg)
+                        )
+                        if statistics.mean(seasonal_table.xg) != 0
+                        else 0
+                    )
+
                     season_goals = sum(seasonal_table.goals)
                     season_rating = statistics.mean(seasonal_table.rating)
+                    season_rating_var = (
+                        1
+                        / (
+                            statistics.stdev(seasonal_table.rating)
+                            / statistics.mean(seasonal_table.rating)
+                        )
+                        if (
+                            statistics.stdev(seasonal_table.rating)
+                            / statistics.mean(seasonal_table.rating)
+                        )
+                        != 0
+                        else 0
+                    )
+
+                    season_def_vaep = statistics.mean(seasonal_table.vaep_value_def)
 
                     lookback_vaep = statistics.mean(lookback_table.vaep_value)
                     lookback_vaep_per90 = (sum(lookback_table.vaep_value) * 90) / sum(
                         lookback_table.minutes
                     )
+                    lookback_vaep_var = 1 / (
+                        statistics.stdev(lookback_table.vaep_value)
+                        / statistics.mean(lookback_table.vaep_value)
+                    )
                     lookback_xg = statistics.mean(lookback_table.xg)
                     lookback_xg_per90 = (sum(lookback_table.xg) * 90) / sum(
                         lookback_table.minutes
                     )
+                    lookback_xg_var = (
+                        1
+                        / (
+                            statistics.stdev(lookback_table.xg)
+                            / statistics.mean(lookback_table.xg)
+                        )
+                        if statistics.mean(lookback_table.xg) != 0
+                        else 0
+                    )
                     lookback_goals = sum(lookback_table.goals)
                     lookback_rating = statistics.mean(lookback_table.rating)
+                    lookback_rating_var = (
+                        1
+                        / (
+                            statistics.stdev(lookback_table.rating)
+                            / statistics.mean(lookback_table.rating)
+                        )
+                        if (
+                            statistics.stdev(lookback_table.rating)
+                            / statistics.mean(lookback_table.rating)
+                        )
+                        != 0
+                        else 0
+                    )
+                    lookback_def_vaep = statistics.mean(lookback_table.vaep_value_def)
 
                     if row.h_a == "home":
                         def_3 = lookback_home.to_frame(name="id").merge(
@@ -180,19 +268,27 @@ class PlayerFeatures:
                 features.at[i, "CONS"] = cons
                 features.at[i, "season_vaep"] = season_vaep
                 features.at[i, "season_vaep_per90"] = season_vaep_per90
+                features.at[i, "season_vaep_var"] = season_vaep_var
                 features.at[i, "season_xg"] = season_xg
                 features.at[i, "season_xg_per90"] = season_xg_per90
+                features.at[i, "season_xg_var"] = season_xg_var
                 features.at[i, "season_goals"] = season_goals
                 features.at[i, "season_rating"] = season_rating
+                features.at[i, "season_rating_var"] = season_rating_var
+                features.at[i, "season_def_vaep"] = season_def_vaep
 
                 features.at[i, "lookback_minutes"] = lookback_minutes
                 features.at[i, "lookback_vaep"] = lookback_vaep
                 features.at[i, "lookback_vaep_per90"] = lookback_vaep_per90
+                features.at[i, "lookback_vaep_var"] = lookback_vaep_var
                 features.at[i, "lookback_xg"] = lookback_xg
                 features.at[i, "lookback_xg_per90"] = lookback_xg_per90
+                features.at[i, "lookback_xg_var"] = lookback_xg_var
                 features.at[i, "lookback_xg_conceded"] = lookback_conceded
                 features.at[i, "lookback_goals"] = lookback_goals
                 features.at[i, "lookback_rating"] = lookback_rating
+                features.at[i, "lookback_rating_var"] = lookback_rating_var
+                features.at[i, "lookback_def_vaep"] = lookback_def_vaep
 
         return features
 
