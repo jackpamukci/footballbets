@@ -5,17 +5,28 @@ from tqdm import tqdm
 import numpy as np
 from unidecode import unidecode
 import statistics
+from sklearn.preprocessing import MinMaxScaler
 
 
 class PlayerFeatures:
 
-    def __init__(self, season_data: Season, lookback=3):
+    def __init__(self, season_data: Season, lookback=3, normalize: bool = True):
         self.season = season_data
         self.events = self.season.events
         self.lookback = lookback
+        self.normalize = normalize
 
         features_df = self.season.player_stats.copy()
         self.features = self._preprocess_features(features_df)
+        self.met_col_list = self.features.drop(config_cols + [], axis=1).columns
+
+        if self.normalize:
+            normalized_features = self.features.groupby(
+                "matchday", group_keys=False
+            ).apply(self._scale_group)
+            self.features = pd.concat(
+                [self.features[config_cols], normalized_features], axis=1
+            )
 
     def _preprocess_features(self, features_df):
         features_df = self._match_player_names(features_df)
@@ -32,6 +43,13 @@ class PlayerFeatures:
             on=["game", "team", "player"],
         )
         features_df.rating.fillna(6, inplace=True)
+
+        schedule = self.season.schedule
+        features_df = features_df.merge(
+            schedule[["game", "matchday"]],
+            how="left",
+            on=["game"],
+        )
 
         features_df = self._fix_positions(features_df)
         features_df = self._calculate_features(features_df)
@@ -144,7 +162,7 @@ class PlayerFeatures:
                 player_perf = player_performances.get_group(row.player)
                 seasonal_table = player_perf.loc[: i - 1]
                 position = player_perf.index.get_loc(i)
-                lookback_table = player_perf.iloc[position - 3 : position]
+                lookback_table = player_perf.iloc[position - self.lookback : position]
 
                 if len(lookback_table) <= 1:
                     if len(seasonal_table) <= 1:
@@ -227,19 +245,19 @@ class PlayerFeatures:
                     lookback_def_vaep = lookback_table.vaep_value_def.mean()
 
                     if row.h_a == "home":
-                        def_3 = lookback_home.to_frame(name="id").merge(
+                        def_lookback = lookback_home.to_frame(name="id").merge(
                             seasonal_table, how="left", left_on="id", right_on="game"
                         )
                         lookback_conceded = home_xg_conceded
-                        def_3.minutes.fillna(0, inplace=True)
-                        lookback_minutes = def_3.minutes.mean()
+                        def_lookback.minutes.fillna(0, inplace=True)
+                        lookback_minutes = def_lookback.minutes.mean()
                     else:
-                        def_3 = lookback_away.to_frame(name="id").merge(
+                        def_lookback = lookback_away.to_frame(name="id").merge(
                             seasonal_table, how="left", left_on="id", right_on="game"
                         )
                         lookback_conceded = away_xg_conceded
-                        def_3.minutes.fillna(0, inplace=True)
-                        lookback_minutes = def_3.minutes.mean()
+                        def_lookback.minutes.fillna(0, inplace=True)
+                        lookback_minutes = def_lookback.minutes.mean()
 
                 features.at[i, "CONS"] = cons
                 features.at[i, "season_vaep"] = season_vaep
@@ -355,8 +373,13 @@ class PlayerFeatures:
 
         return features_df
 
+    def _scale_group(self, group):
+        scaler = MinMaxScaler()
+        group[self.met_col_list] = scaler.fit_transform(group[self.met_col_list])
+        return group
 
-config_cols = ["league", "season", "game", "team", "player"]
+
+config_cols = ["league", "season", "game", "team", "player", "matchday", "position"]
 
 cols_to_drop = [
     "league_id",
