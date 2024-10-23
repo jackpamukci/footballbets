@@ -12,10 +12,11 @@ from pathlib import Path
 
 
 supported_leagues = [
-    "ESP-La Liga",
-    "FRA-Ligue 1",
-    "GER-Bundesliga",
-    "ITA-Serie A",
+    # "ESP-La Liga",
+    # "FRA-Ligue 1",
+    # "GER-Bundesliga",
+    # "ITA-Serie A",
+    "ENG-Premier League"
 ]
 
 

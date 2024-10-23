@@ -16,9 +16,6 @@ class PlayerFeatures:
 
         features_df = self.season.player_stats.copy()
         self.features = self._preprocess_features(features_df)
-        self.features = self.features.sort_values(
-            ["game", "h_a", "minutes"], ascending=[True, True, False]
-        ).reset_index(drop=True)
 
     def _preprocess_features(self, features_df):
         features_df = self._match_player_names(features_df)
@@ -38,6 +35,13 @@ class PlayerFeatures:
 
         features_df = self._fix_positions(features_df)
         features_df = self._calculate_features(features_df)
+        features_df = (
+            features_df.sort_values(
+                ["game", "h_a", "minutes"], ascending=[True, True, False]
+            )
+            .reset_index(drop=True)
+            .drop(cols_to_drop, axis=1)
+        )
 
         return features_df
 
@@ -169,86 +173,58 @@ class PlayerFeatures:
                         lookback_rating_var = 0
                         lookback_def_vaep = 0
                 else:
-                    cons = statistics.stdev(seasonal_table.minutes) / statistics.mean(
-                        seasonal_table.minutes
-                    )
-                    season_vaep = statistics.mean(seasonal_table.vaep_value)
-                    season_vaep_var = 1 / (
-                        statistics.stdev(seasonal_table.vaep_value)
-                        / statistics.mean(seasonal_table.vaep_value)
-                    )
-                    season_vaep_per90 = (sum(seasonal_table.vaep_value) * 90) / sum(
-                        seasonal_table.minutes
-                    )
-                    season_xg = statistics.mean(seasonal_table.xg)
-                    season_xg_per90 = (sum(seasonal_table.xg) * 90) / sum(
-                        seasonal_table.minutes
-                    )
+                    cons = seasonal_table.minutes.std() / seasonal_table.minutes.mean()
+                    season_vaep = seasonal_table.vaep_value.mean()
+                    season_vaep_var = 1 / (seasonal_table.vaep_value.std())
+                    season_vaep_per90 = (
+                        seasonal_table.vaep_value.sum() * 90
+                    ) / seasonal_table.minutes.sum()
+
+                    season_xg = seasonal_table.xg.mean()
+                    season_xg_per90 = (
+                        seasonal_table.xg.sum() * 90
+                    ) / seasonal_table.minutes.sum()
+
                     season_xg_var = (
-                        1
-                        / (
-                            statistics.stdev(seasonal_table.xg)
-                            / statistics.mean(seasonal_table.xg)
-                        )
-                        if statistics.mean(seasonal_table.xg) != 0
+                        1 / (seasonal_table.xg.std())
+                        if seasonal_table.xg.std() != 0
                         else 0
                     )
 
-                    season_goals = sum(seasonal_table.goals)
-                    season_rating = statistics.mean(seasonal_table.rating)
+                    season_goals = seasonal_table.goals.sum()
+                    season_rating = seasonal_table.rating.mean()
                     season_rating_var = (
-                        1
-                        / (
-                            statistics.stdev(seasonal_table.rating)
-                            / statistics.mean(seasonal_table.rating)
-                        )
-                        if (
-                            statistics.stdev(seasonal_table.rating)
-                            / statistics.mean(seasonal_table.rating)
-                        )
-                        != 0
+                        1 / (seasonal_table.rating.std())
+                        if (seasonal_table.rating.std()) != 0
                         else 0
                     )
 
-                    season_def_vaep = statistics.mean(seasonal_table.vaep_value_def)
+                    season_def_vaep = seasonal_table.vaep_value_def.mean()
 
-                    lookback_vaep = statistics.mean(lookback_table.vaep_value)
-                    lookback_vaep_per90 = (sum(lookback_table.vaep_value) * 90) / sum(
-                        lookback_table.minutes
-                    )
-                    lookback_vaep_var = 1 / (
-                        statistics.stdev(lookback_table.vaep_value)
-                        / statistics.mean(lookback_table.vaep_value)
-                    )
-                    lookback_xg = statistics.mean(lookback_table.xg)
-                    lookback_xg_per90 = (sum(lookback_table.xg) * 90) / sum(
-                        lookback_table.minutes
-                    )
+                    lookback_vaep = lookback_table.vaep_value.mean()
+                    lookback_vaep_per90 = (
+                        lookback_table.vaep_value.sum() * 90
+                    ) / lookback_table.minutes.sum()
+
+                    lookback_vaep_var = 1 / (lookback_table.vaep_value.std())
+                    lookback_xg = lookback_table.xg.mean()
+                    lookback_xg_per90 = (
+                        lookback_table.xg.sum() * 90
+                    ) / lookback_table.minutes.sum()
+
                     lookback_xg_var = (
-                        1
-                        / (
-                            statistics.stdev(lookback_table.xg)
-                            / statistics.mean(lookback_table.xg)
-                        )
-                        if statistics.mean(lookback_table.xg) != 0
+                        1 / (lookback_table.xg.std())
+                        if lookback_table.xg.std() != 0
                         else 0
                     )
-                    lookback_goals = sum(lookback_table.goals)
-                    lookback_rating = statistics.mean(lookback_table.rating)
+                    lookback_goals = lookback_table.goals.sum()
+                    lookback_rating = lookback_table.rating.mean()
                     lookback_rating_var = (
-                        1
-                        / (
-                            statistics.stdev(lookback_table.rating)
-                            / statistics.mean(lookback_table.rating)
-                        )
-                        if (
-                            statistics.stdev(lookback_table.rating)
-                            / statistics.mean(lookback_table.rating)
-                        )
-                        != 0
+                        1 / (lookback_table.rating.std())
+                        if (lookback_table.rating.std()) != 0
                         else 0
                     )
-                    lookback_def_vaep = statistics.mean(lookback_table.vaep_value_def)
+                    lookback_def_vaep = lookback_table.vaep_value_def.mean()
 
                     if row.h_a == "home":
                         def_3 = lookback_home.to_frame(name="id").merge(
@@ -256,14 +232,14 @@ class PlayerFeatures:
                         )
                         lookback_conceded = home_xg_conceded
                         def_3.minutes.fillna(0, inplace=True)
-                        lookback_minutes = statistics.mean(def_3.minutes)
+                        lookback_minutes = def_3.minutes.mean()
                     else:
                         def_3 = lookback_away.to_frame(name="id").merge(
                             seasonal_table, how="left", left_on="id", right_on="game"
                         )
                         lookback_conceded = away_xg_conceded
                         def_3.minutes.fillna(0, inplace=True)
-                        lookback_minutes = statistics.mean(def_3.minutes)
+                        lookback_minutes = def_3.minutes.mean()
 
                 features.at[i, "CONS"] = cons
                 features.at[i, "season_vaep"] = season_vaep
@@ -380,6 +356,8 @@ class PlayerFeatures:
         return features_df
 
 
+config_cols = ["league", "season", "game", "team", "player"]
+
 cols_to_drop = [
     "league_id",
     "season_id",
@@ -400,6 +378,10 @@ cols_to_drop = [
     "yellow_cards",
     "red_cards",
     "vaep_value",
+    "rating",
     "offensive_value",
     "defensive_value",
+    "vaep_value_def",
+    "offensive_value_def",
+    "defensive_value_def",
 ]
