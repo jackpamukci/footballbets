@@ -18,15 +18,21 @@ class PlayerFeatures:
 
         features_df = self.season.player_stats.copy()
         self.features = self._preprocess_features(features_df)
-        self.met_col_list = self.features.drop(config_cols + [], axis=1).columns
+        self.met_col_list = self.features.drop(config_cols, axis=1).columns
 
         if self.normalize:
-            normalized_features = self.features.groupby(
-                "matchday", group_keys=False
-            ).apply(self._scale_group)
-            self.features = pd.concat(
-                [self.features[config_cols], normalized_features], axis=1
+            self.features = self.features.groupby("matchday", group_keys=False).apply(
+                self._scale_group
             )
+
+        pos_df = pd.get_dummies(self.features.position)
+        self.features = pd.concat(
+            [self.features.drop("position", axis=1), pos_df], axis=1
+        )
+
+        self.features["lookback"] = self.features.apply(
+            lambda x: 1 if str(x.game) in self.lookback_matches else 0, axis=1
+        )
 
     def _preprocess_features(self, features_df):
         features_df = self._match_player_names(features_df)
@@ -117,6 +123,8 @@ class PlayerFeatures:
         features.dropna(subset=["player"], inplace=True)
         features.fillna(0, inplace=True)
 
+        lookback_matches = []
+
         match_fixtures = features.groupby("game")
         player_performances = features.groupby("player")
 
@@ -136,6 +144,13 @@ class PlayerFeatures:
             away_xg_table = lookback_away.to_frame(name="id").merge(
                 self.season.team_stats, how="left", left_on="id", right_on="game"
             )
+
+            home_total = len(home_fix.iloc[:home_match])
+            away_total = len(away_fix.iloc[:away_match])
+            if home_total < self.lookback or away_total < self.lookback:
+                lookback_matches.append(fixture)
+            # print(home_total)
+            # print(away_total)
 
             home_xg_conceded = (
                 statistics.mean(
@@ -159,6 +174,7 @@ class PlayerFeatures:
             )
 
             for i, row in data.iterrows():
+
                 player_perf = player_performances.get_group(row.player)
                 seasonal_table = player_perf.loc[: i - 1]
                 position = player_perf.index.get_loc(i)
@@ -284,6 +300,8 @@ class PlayerFeatures:
                 features.at[i, "lookback_rating_var"] = lookback_rating_var
                 features.at[i, "lookback_def_vaep"] = lookback_def_vaep
 
+        self.lookback_matches = lookback_matches
+
         return features
 
     def _fix_positions(self, features_df):
@@ -306,6 +324,7 @@ class PlayerFeatures:
         features_df.position = features_df.position.apply(
             lambda x: x.replace(x, pos[x])
         )
+
         return features_df
 
     def _match_player_names(self, features_df):
@@ -379,7 +398,16 @@ class PlayerFeatures:
         return group
 
 
-config_cols = ["league", "season", "game", "team", "player", "matchday", "position"]
+config_cols = [
+    "league",
+    "season",
+    "game",
+    "team",
+    "player",
+    "matchday",
+    "position",
+    "h_a",
+]
 
 cols_to_drop = [
     "league_id",
