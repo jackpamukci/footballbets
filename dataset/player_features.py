@@ -17,6 +17,10 @@ class PlayerFeatures:
         self.normalize = normalize
 
         features_df = self.season.player_stats.copy()
+
+        # fixture_list = self.events.fixture.unique()
+        # features_df = features_df[features_df.game.isin(fixture_list)]
+
         self.features = self._preprocess_features(features_df)
         self.met_col_list = self.features.drop(config_cols, axis=1).columns
 
@@ -129,15 +133,21 @@ class PlayerFeatures:
         player_performances = features.groupby("player")
 
         for fixture, data in tqdm(match_fixtures):
-            home_team = fixture[11:].split("-")[0]
+            sched_fix = self.season.schedule[
+                self.season.schedule["game"] == fixture
+            ].iloc[0]
+
+            home_team = sched_fix.home_team
             home_fix = pd.Series(features[features.team == home_team].game.unique())
+            # print(len(home_fix))
             home_match = home_fix[home_fix == fixture].index[0]
             lookback_home = home_fix.loc[home_match - self.lookback : home_match - 1]
             home_xg_table = lookback_home.to_frame(name="id").merge(
                 self.season.team_stats, how="left", left_on="id", right_on="game"
             )
 
-            away_team = fixture[11:].split("-")[1]
+            away_team = sched_fix.away_team
+            # print('away')
             away_fix = pd.Series(features[features.team == away_team].game.unique())
             away_match = away_fix[away_fix == fixture].index[0]
             lookback_away = away_fix.loc[away_match - self.lookback : away_match - 1]
@@ -209,7 +219,11 @@ class PlayerFeatures:
                 else:
                     cons = seasonal_table.minutes.std() / seasonal_table.minutes.mean()
                     season_vaep = seasonal_table.vaep_value.mean()
-                    season_vaep_var = 1 / (seasonal_table.vaep_value.std())
+                    season_vaep_var = (
+                        1 / (seasonal_table.vaep_value.std())
+                        if seasonal_table.vaep_value.std() != 0
+                        else 0
+                    )
                     season_vaep_per90 = (
                         seasonal_table.vaep_value.sum() * 90
                     ) / seasonal_table.minutes.sum()
@@ -240,7 +254,11 @@ class PlayerFeatures:
                         lookback_table.vaep_value.sum() * 90
                     ) / lookback_table.minutes.sum()
 
-                    lookback_vaep_var = 1 / (lookback_table.vaep_value.std())
+                    lookback_vaep_var = (
+                        1 / (lookback_table.vaep_value.std())
+                        if lookback_table.vaep_value.std() != 0
+                        else 0
+                    )
                     lookback_xg = lookback_table.xg.mean()
                     lookback_xg_per90 = (
                         lookback_table.xg.sum() * 90
@@ -328,7 +346,10 @@ class PlayerFeatures:
         return features_df
 
     def _match_player_names(self, features_df):
+        # print(len(features_df.player.unique()))
         features_df.player = features_df.player.apply(lambda x: unidecode(x))
+
+        self.events.dropna(subset="player", inplace=True)
         self.events.player = self.events.player.apply(lambda x: unidecode(x))
         self.season.player_ratings.player = self.season.player_ratings.player.apply(
             lambda x: unidecode(x)
@@ -346,12 +367,14 @@ class PlayerFeatures:
                 row.player
                 not in team_match[team_match["team"] == row.team].player.unique()
             ):
+                # print(row.player, row.team)
                 team_players = team_match[
                     (team_match["team"] == row.team)
                 ].player.unique()
                 stat_players = stat_match[
                     (stat_match["team"] == row.team)
                 ].player.unique()
+                # print(len(features_df.player.unique()))
                 features_df.at[i, "player"] = best_name_match(
                     row.player, set(team_players).difference(stat_players)
                 )
@@ -377,6 +400,8 @@ class PlayerFeatures:
 
         if old_dups.shape[0] != 0:
 
+            # print(old_dups)
+
             oldies = old_dups.apply(
                 lambda x: fuzzy_match(
                     x.player, self.events[self.events["team"] == x.team].player.unique()
@@ -390,6 +415,7 @@ class PlayerFeatures:
                 idx = features_df[features_df["player_id"] == row.player_id].index
                 features_df.loc[idx, "player"] = row.new_name
 
+        # print(len(features_df.player.unique()))
         return features_df
 
     def _scale_group(self, group):
