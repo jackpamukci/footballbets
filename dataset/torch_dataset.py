@@ -9,13 +9,14 @@ import pandas as pd
 class ModelDataset(Dataset):
     def __init__(
         self,
-        player_features: PlayerFeatures,
+        player_features: pd.DataFrame,
+        schedule: pd.DataFrame,
         device: torch.device = torch.device("cpu"),
     ):
         super(ModelDataset, self).__init__()
-        self.features = player_features.features
-        self.schedule = player_features.season.schedule
-        self.lookback = player_features.lookback_matches
+        self.features = player_features
+        self.schedule = schedule
+
         self.player_config_cols = [
             "league",
             "season",
@@ -27,13 +28,12 @@ class ModelDataset(Dataset):
             "matchday",
         ]
 
-        self.features = self.features[~self.features["game"].isin(self.lookback)]
+        self.features = self.features[self.features["lookback"] != 1]
 
         player_feats = []
         player_config = []
-        fixture = []
-        season = []
-        league = []
+        targets = []
+        config = []
 
         groups = self.features.groupby("game")
         for game, group in groups:
@@ -87,17 +87,28 @@ class ModelDataset(Dataset):
             sched_match = self.schedule[self.schedule["game"] == game].iloc[0]
 
             player_feats.append(player_tensor)
+
+            target = (
+                0
+                if sched_match.home_score == sched_match.away_score
+                else (1 if sched_match.home_score > sched_match.away_score else 2)
+            )
+
+            targets.append(target)
             player_config.append(player_config_df)
-            fixture.append(game)
-            season.append(sched_match.season)
-            league.append(sched_match.league)
+            config.append(
+                {
+                    "fixture": game,
+                    "season": sched_match.season,
+                    "league": sched_match.league,
+                }
+            )
 
         self.data = {
             "player_features": player_feats,
-            "player_configs": player_config,
-            "fixtures": fixture,
-            "seasons": season,
-            "leagues": league,
+            "targets": targets,
+            "player_info": player_config,
+            "config": config,
         }
 
     def __len__(self):
@@ -106,8 +117,7 @@ class ModelDataset(Dataset):
     def __getitem__(self, idx: int):
         return (
             self.data["player_features"][idx],
-            self.data["player_configs"][idx],
-            self.data["fixtures"][idx],
-            self.data["seasons"][idx],
-            self.data["leagues"][idx],
+            self.data["targets"][idx],
+            self.data["player_info"][idx],
+            self.data["config"][idx],
         )
