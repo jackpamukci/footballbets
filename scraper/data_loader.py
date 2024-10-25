@@ -12,11 +12,11 @@ from pathlib import Path
 
 
 supported_leagues = [
-    # "ESP-La Liga",
+    "ESP-La Liga",
     # "FRA-Ligue 1",
-    # "GER-Bundesliga",
+    "GER-Bundesliga",
     # "ITA-Serie A",
-    "ENG-Premier League"
+    # "ENG-Premier League"
 ]
 
 
@@ -52,17 +52,17 @@ class HistoricData:
 
         logging.info(len(self.schedule))
 
-        # self._load_event_data()
+        self._load_event_data()
         self._load_player_ratings()
-        # self._load_player_match_stats()
-        # self._load_team_match_data()
-        # try:
-        #     self._load_odds()
-        # except:
-        #     with open("scraper_notes.txt", "a") as file:
-        #         file.write(
-        #             f"{self.league_id} | {self.season_id} \n Betting Data Unavailable (must download manually) \n"
-        #         )
+        self._load_player_match_stats()
+        self._load_team_match_data()
+        try:
+            self._load_odds()
+        except:
+            with open("scraper_notes.txt", "a") as file:
+                file.write(
+                    f"{self.league_id} | {self.season_id} \n Betting Data Unavailable (must download manually) \n"
+                )
 
     def _load_event_data(self):
         game_ids = list(self.schedule.ws_game_id)
