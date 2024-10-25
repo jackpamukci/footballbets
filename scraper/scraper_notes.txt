@@ -378,3 +378,80 @@ ENG-Premier League | 2223
 ENG-Premier League | 2324 
  WhoScored Team Diff: set() 
  Understat Team Diff: set() 
+ESP-La Liga | 1718 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1718 
+ Betting Data Unavailable (must download manually) 
+ESP-La Liga | 1819 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1920 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2122 
+ WhoScored Game ID 1559829 unable to load ratings 
+ESP-La Liga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1718 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1718 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1718 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1718 
+ Betting Data Unavailable (must download manually) 
+ESP-La Liga | 1819 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1819 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1920 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1920 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2122 
+ WhoScored Game ID 1559829 unable to load ratings 
+GER-Bundesliga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2223 
+ WhoScored Game ID 1643097 unable to load ratings 
+GER-Bundesliga | 2223 
+ WhoScored Game ID 1643214 unable to load ratings 
+ESP-La Liga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 

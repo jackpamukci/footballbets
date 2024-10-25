@@ -59,13 +59,13 @@ class ModelDataset(Dataset):
             )
             away_config = away_team[self.player_config_cols].iloc[:14]
 
-            max_rows = max(home_feats.shape[0], away_feats.shape[0])
-            max_cols = max(home_feats.shape[1], away_feats.shape[1])
+            # max_rows = max(home_feats.shape[0], away_feats.shape[0])
+            # max_cols = max(home_feats.shape[1], away_feats.shape[1])
             home_feats_padded = np.pad(
                 home_feats,
                 (
-                    (0, max_rows - home_feats.shape[0]),
-                    (0, max_cols - home_feats.shape[1]),
+                    (0, 14 - home_feats.shape[0]),
+                    (0, 30 - home_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
@@ -73,15 +73,15 @@ class ModelDataset(Dataset):
             away_feats_padded = np.pad(
                 away_feats,
                 (
-                    (0, max_rows - away_feats.shape[0]),
-                    (0, max_cols - away_feats.shape[1]),
+                    (0, 14 - away_feats.shape[0]),
+                    (0, 30 - away_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
             )
 
             stacked_array = np.stack([home_feats_padded, away_feats_padded], axis=0)
-            player_tensor = torch.from_numpy(stacked_array)
+            player_tensor = torch.tensor(stacked_array, dtype=torch.float)
 
             player_config_df = pd.concat([home_config, away_config])
             sched_match = self.schedule[self.schedule["game"] == game].iloc[0]
@@ -107,7 +107,7 @@ class ModelDataset(Dataset):
         self.data = {
             "player_features": player_feats,
             "targets": targets,
-            "player_info": player_config,
+            # "player_info": player_config,
             "config": config,
         }
 
@@ -118,6 +118,6 @@ class ModelDataset(Dataset):
         return (
             self.data["player_features"][idx],
             self.data["targets"][idx],
-            self.data["player_info"][idx],
+            # self.data["player_info"][idx],
             self.data["config"][idx],
         )
