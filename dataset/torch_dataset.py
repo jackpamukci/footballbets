@@ -31,6 +31,7 @@ class ModelDataset(Dataset):
         self.features = self.features[self.features["lookback"] != 1]
 
         player_feats = []
+        targets = []
         player_config = []
         targets = []
         config = []
@@ -85,6 +86,8 @@ class ModelDataset(Dataset):
 
             player_config_df = pd.concat([home_config, away_config])
             sched_match = self.schedule[self.schedule["game"] == game].iloc[0]
+
+            target = 0 if sched_match.home_score == sched_match.away_score else (1 if sched_match.home_score > sched_match.away_score else 0)
 
             player_feats.append(player_tensor)
 
