@@ -212,7 +212,7 @@ class TeamFeatures:
 
             features = features.groupby("matchday", group_keys=False).apply(
                 self._scale_group
-            )
+            ).drop('matchday', axis=1)
 
             return pd.concat([config, features], axis=1)
 
