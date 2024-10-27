@@ -18,8 +18,8 @@ class PlayerFeatures:
 
         features_df = self.season.player_stats.copy()
 
-        # fixture_list = self.events.fixture.unique()
-        # features_df = features_df[features_df.game.isin(fixture_list)]
+        fixture_list = self.events.fixture.unique()
+        features_df = features_df[features_df.game.isin(fixture_list)]
 
         self.features = self._preprocess_features(features_df)
         self.met_col_list = self.features.drop(config_cols, axis=1).columns
@@ -39,6 +39,7 @@ class PlayerFeatures:
         )
 
     def _preprocess_features(self, features_df):
+
         features_df = self._match_player_names(features_df)
         features_df = self._get_vaep(features_df)
         features_df["h_a"] = features_df.apply(

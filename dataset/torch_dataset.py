@@ -87,7 +87,11 @@ class PlayerDataset(Dataset):
             player_config_df = pd.concat([home_config, away_config])
             sched_match = self.schedule[self.schedule["game"] == game].iloc[0]
 
-            target = 0 if sched_match.home_score == sched_match.away_score else (1 if sched_match.home_score > sched_match.away_score else 0)
+            target = (
+                0
+                if sched_match.home_score == sched_match.away_score
+                else (1 if sched_match.home_score > sched_match.away_score else 0)
+            )
 
             player_feats.append(player_tensor)
 
@@ -124,7 +128,6 @@ class PlayerDataset(Dataset):
             # self.data["player_info"][idx],
             self.data["config"][idx],
         )
-    
 
 
 class HybridDataset(Dataset):
@@ -136,8 +139,8 @@ class HybridDataset(Dataset):
         device: torch.device = torch.device("cpu"),
     ):
         super(HybridDataset, self).__init__()
-        self.player_features = player_features
-        self.team_features = team_features
+        self.player_features = player_features.features
+        self.team_features = team_features.features
         self.schedule = schedule
 
         self.player_config_cols = [
@@ -151,13 +154,26 @@ class HybridDataset(Dataset):
             "matchday",
         ]
 
-        self.team_config_cols = ['season', 'game', 'date', 'home_team', 'away_team', 'target',
-       'matchday', 'lookback']
+        self.team_config_cols = [
+            "season",
+            "game",
+            "date",
+            "home_team",
+            "away_team",
+            "target",
+            "matchday",
+            "lookback",
+        ]
 
         self.team_features = self.team_features[self.team_features["lookback"] != 1]
-        self.player_features = self.player_features[self.player_features["lookback"] != 1]
+        self.player_features = self.player_features[
+            self.player_features["lookback"] != 1
+        ]
 
         ## TODO: assert that all the games in player dataset, event dataset and schedule match
+        assert set(self.player_features.game.unique()) == set(
+            self.team_features.game.unique()
+        ), "Missing games from team and event features."
 
         player_feats = []
         team_feats = []
@@ -166,7 +182,7 @@ class HybridDataset(Dataset):
         targets = []
         config = []
 
-        groups = self.features.groupby("game")
+        groups = self.player_features.groupby("game")
         for game, group in groups:
 
             home_team = group[group["h_a"] == "home"].sort_values(
@@ -215,11 +231,21 @@ class HybridDataset(Dataset):
             player_tensor = torch.tensor(stacked_array, dtype=torch.float)
 
             player_config_df = pd.concat([home_config, away_config])
+            team_vector = (
+                self.team_features[self.team_features["game"] == game]
+                .drop(self.team_config_cols, axis=1)
+                .iloc[0]
+            )
             sched_match = self.schedule[self.schedule["game"] == game].iloc[0]
 
-            target = 0 if sched_match.home_score == sched_match.away_score else (1 if sched_match.home_score > sched_match.away_score else 0)
+            target = (
+                0
+                if sched_match.home_score == sched_match.away_score
+                else (1 if sched_match.home_score > sched_match.away_score else 0)
+            )
 
             player_feats.append(player_tensor)
+            team_feats.append(torch.tensor(team_vector, dtype=torch.float))
 
             target = (
                 0
@@ -239,8 +265,8 @@ class HybridDataset(Dataset):
 
         self.data = {
             "player_features": player_feats,
+            "team_features": team_feats,
             "targets": targets,
-            # "player_info": player_config,
             "config": config,
         }
 
@@ -250,6 +276,7 @@ class HybridDataset(Dataset):
     def __getitem__(self, idx: int):
         return (
             self.data["player_features"][idx],
+            self.data["team_features"][idx],
             self.data["targets"][idx],
             # self.data["player_info"][idx],
             self.data["config"][idx],
