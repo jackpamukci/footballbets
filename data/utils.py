@@ -8,6 +8,8 @@ import socceraction.vaep.formula as vaepformula
 import sys
 import os
 import numpy as np
+import boto3
+from dotenv import load_dotenv
 from geopy.distance import geodesic
 import Levenshtein
 from fuzzywuzzy import fuzz, process
@@ -213,6 +215,24 @@ def best_name_match(target, strings):
 def fuzzy_match(query, choices):
     best_match, score = process.extractOne(query, choices, scorer=fuzz.token_set_ratio)
     return best_match
+
+def _get_s3_agent(env_path):
+    try:
+        load_dotenv(env_path)
+        aws_access_key = os.getenv("AWS_ACCESS_KEY")
+        aws_secret_access = os.getenv("AWS_SECRET_ACCESS")
+        aws_region = os.getenv("AWS_REGION")
+
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_access,
+            region_name=aws_region,
+        )
+
+        return s3
+    except Exception as e:
+        raise ConnectionError("Connection to AWS Failed. Check Credentials.") from e
 
 
 class ProbabityModel:

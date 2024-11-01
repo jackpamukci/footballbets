@@ -1,7 +1,5 @@
 import os
 import pandas as pd
-import boto3
-from dotenv import load_dotenv
 from io import StringIO
 import socceraction.spadl as spadl
 from data import utils
@@ -28,7 +26,7 @@ class Season:
         self.bucket = bucket
         self.env_path = env_path
         self.get_dist = get_dist
-        self._get_s3_agent()
+        self.s3 = utils._get_s3_agent(env_path)
 
         _data = self._load_data()
         self.events = _data["events"]
@@ -301,18 +299,4 @@ class Season:
             "team_stats": team_stats,
         }
 
-    def _get_s3_agent(self):
-        try:
-            load_dotenv(self.env_path)
-            aws_access_key = os.getenv("AWS_ACCESS_KEY")
-            aws_secret_access = os.getenv("AWS_SECRET_ACCESS")
-            aws_region = os.getenv("AWS_REGION")
-
-            self.s3 = boto3.client(
-                "s3",
-                aws_access_key_id=aws_access_key,
-                aws_secret_access_key=aws_secret_access,
-                region_name=aws_region,
-            )
-        except Exception as e:
-            raise ConnectionError("Connection to AWS Failed. Check Credentials.") from e
+    
