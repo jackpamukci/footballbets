@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch import nn, Tensor
 import torch.nn.functional as F
 
-class CNNModel(torch.nn.Module):
+class PlayerCNN(torch.nn.Module):
     def __init__(
         self,
         player_dim: int,

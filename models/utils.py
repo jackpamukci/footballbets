@@ -88,9 +88,13 @@ def train_routine(
         test_acc.append(test_epoch_acc)
         all_prob = np.array(all_prob)
 
+        y_true_one_hot = np.zeros_like(all_prob)
+        y_true_one_hot[np.arange(len(all_labels)), all_labels] = 1
+        brier_score = np.mean(np.sum((all_prob - y_true_one_hot) ** 2, axis=1))
 
-        print(f'Epoch {epoch+1}/{num_epochs} | Test Acc {test_epoch_acc} | Test Loss {test_epoch_loss}')
-    return model
+
+        print(f'Epoch {epoch+1}/{num_epochs} | Test Acc {test_epoch_acc} | Test Loss {test_epoch_loss} | Brier {brier_score}')
+    return model, all_preds, all_prob, all_labels
 
 def get_confusion_matrix(all_labels, all_preds):
   cm = confusion_matrix(all_labels, all_preds)
