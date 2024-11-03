@@ -106,7 +106,8 @@ class PlayerDataset(Dataset):
                 sched_match.season,
                 sched_match.date,
                 sched_match.home_team,
-                sched_match.away_team
+                sched_match.away_team,
+                sched_match.game
             ])
 
         self.data = {

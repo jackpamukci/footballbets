@@ -6,10 +6,15 @@ from dataset.torch_dataset import PlayerDataset
 from data import utils
 from tqdm import tqdm
 
+from itertools import chain
+import torch
+from torch.utils.data import DataLoader, random_split
 import torch.optim as optim
 from torch import nn
+import torch.nn.functional as F
 from models.utils import train_routine
 from models.models import PlayerCNN
+import numpy as np
 
 class ProbabilityEstimator:
     def __init__(self,
@@ -51,21 +56,25 @@ class ProbabilityEstimator:
             
                 if model_type == 'team':
                     self.model = LogisticRegression(max_iter=10000)
-                    train_data = self._get_team_features()
-                    self.training_data = train_data[(train_data['season'] != 2324) & (train_data['lookback'] != 1)]
+                    self._get_team_features()
 
                     X_train = self.training_data[self.team_feature_cols]
                     y_train = self.training_data.target
                     self.model.fit(X_train, y_train)
 
                 elif model_type == 'player':
-                    return
+                    print('get features')
+                    self._get_player_features()
+                    print('train model')
+                    self._train_player_model()
 
 
         self._get_pred_odds()
         self._extend_bets()
         
     def _get_pred_odds(self):
+
+        bet_df_cols = ['league', 'game', 'PSCD', 'PSCH', 'PSCA', 'B365C>2.5', 'B365C<2.5']
 
         if self.model_type == 'team':
             data_to_predict = self.features[self.team_feature_cols]
@@ -74,13 +83,51 @@ class ProbabilityEstimator:
             pred_df = pd.DataFrame(predictions, columns=['draw_prob', 'home_prob', 'away_prob'])
             pred_df = config.merge(pred_df, how='inner', left_index=True, right_index=True)
 
-            
-            pred_odds = pred_df.merge(self.odds[['league', 'game', 'PSCD', 'PSCH', 'PSCA', 'B365C>2.5', 'B365C<2.5']],
+        elif self.model_type == 'player':
+            player_preds = []
+            match_configs = []
+            targets = []
+
+            test_loader = DataLoader(self.features, batch_size=32, shuffle=True)
+
+            print('getting preds')
+            with torch.no_grad():
+                for test_batch in test_loader:
+                    test_inputs, test_labels, match_config = test_batch
+
+                    test_outputs = self.model(test_inputs)
+                    test_probabilities = F.softmax(test_outputs)
+                    targets.extend(test_labels.tolist())
+
+                    player_preds.append(np.array(test_probabilities))
+
+                    match_configs.append(match_config)
+
+            result = [list(chain.from_iterable(inner_lists)) for inner_lists in zip(*match_configs)]
+
+            config_df = pd.DataFrame({
+                'league':result[0],
+                'season':result[1][0].item(),
+                'date':result[2],
+                'home_team':result[3],
+                'away_team':result[4],
+                'game':result[5]
+            })
+
+            preds = pd.DataFrame(np.concatenate(player_preds, axis=0), columns=['draw_prob', 'home_prob', 'away_prob'])
+            pred_df = pd.concat([config_df, preds], axis=1)
+            pred_df['target'] = pd.Series(targets)
+
+            bet_df_cols = [col for col in bet_df_cols if col != 'league']
+
+        pred_odds = pred_df.merge(self.odds[bet_df_cols],
                           how='left', on='game')
+        
+        print(pred_odds.columns)
             
-            pred_odds['matchday'].bfill(inplace=True)
-            
-            self.pred_odds = pred_odds
+        # pred_odds['matchday'].bfill(inplace=True)
+        
+        self.pred_odds = pred_odds
 
     def _extend_bets(self):
         # Define columns and markets
@@ -142,11 +189,55 @@ class ProbabilityEstimator:
           )
         
         master_df = pd.read_csv(mastercsv['Body'], index_col=0)
-        
-        return master_df
-    
+
+        self.training_data = master_df[(master_df['season'] != 2324) & (master_df['lookback'] != 1)]
+
+        if self.features is None:
+            self.features = master_df[(master_df['season'] == 2324) & (master_df['lookback'] != 1)]
 
     def _get_player_features(self):
-        return
+
+        ### TARGET IS ASSIGNED AS 1x2 in schedule!!!
+
+        player_feats = self.s3.get_object(
+            Bucket='footballbets',
+            Key=f"season_pickles/master_player_feats.csv",
+        )
+        master_player_feats = pd.read_csv(player_feats['Body'], index_col=0)
+        master_player_feats = master_player_feats[master_player_feats['lookback'] != 1]
+
+        s3schedule = self.s3.get_object(Bucket='footballbets', Key='season_pickles/master_schedule.csv')
+        master_schedule = pd.read_csv(s3schedule['Body'], index_col=0)
+        master_schedule['target'] = master_schedule.apply(lambda x: 0 if x.home_score == x.away_score else (1 if x.home_score > x.away_score else 2), axis=1)
+
+        train_feats = master_player_feats[master_player_feats['season'] != 2324]
+        train_schedule = master_schedule[master_schedule['season'] != 2324]
+
+        self.training_data = PlayerDataset(train_feats,
+                            train_schedule)
+        
+        if self.features is None:
+            test_feats = master_player_feats[master_player_feats['season'] == 2324]
+            test_schedule = master_schedule[master_schedule['season'] == 2324]
+            self.features = PlayerDataset(test_feats,
+                        test_schedule)
+                            
+
+    
+    def _train_player_model(self):
+        
+        train_loader = DataLoader(self.training_data, batch_size=32, shuffle=True)
+
+        learning_rate = 0.0001
+        model = PlayerCNN(player_dim=14,
+                            feature_dim=30)
+        loss_fn = nn.CrossEntropyLoss()
+        optimizer = optim.Adam(model.parameters(),
+                            lr=learning_rate)
+        self.model = train_routine(model,
+                            train_loader,
+                            optimizer,
+                            loss_fn,
+                            50)
 
     
