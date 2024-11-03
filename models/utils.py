@@ -10,10 +10,10 @@ import numpy as np
 def train_routine(
     model,
     train_loader,
-    test_loader,
     optimizer,
     loss_fn,
     num_epochs,
+    verbose=False
 ):
     # model.to(device)
 
@@ -65,36 +65,37 @@ def train_routine(
         all_labels = []
         all_prob = []
 
-        with torch.no_grad():  # Disable gradient computation for validation
-            for test_batch in test_loader:
-                test_inputs, test_labels, _ = test_batch
+        # with torch.no_grad():  # Disable gradient computation for validation
+        #     for test_batch in test_loader:
+        #         test_inputs, test_labels, _ = test_batch
 
-                test_outputs = model(test_inputs)
-                test_probabilities = F.softmax(test_outputs)
-                _, test_preds = torch.max(test_probabilities, 1)
+        #         test_outputs = model(test_inputs)
+        #         test_probabilities = F.softmax(test_outputs)
+        #         _, test_preds = torch.max(test_probabilities, 1)
 
-                test_loss += loss_fn(test_outputs, test_labels).item() * test_inputs.size(0)
-                test_corrects += torch.sum(test_preds == test_labels.data)
-                test_total += test_labels.size(0)
+        #         test_loss += loss_fn(test_outputs, test_labels).item() * test_inputs.size(0)
+        #         test_corrects += torch.sum(test_preds == test_labels.data)
+        #         test_total += test_labels.size(0)
 
-                all_preds.extend(test_preds.cpu().numpy())
-                all_prob.extend(test_probabilities.cpu().numpy())
-                all_labels.extend(test_labels.cpu().numpy())
+        #         all_preds.extend(test_preds.cpu().numpy())
+        #         all_prob.extend(test_probabilities.cpu().numpy())
+        #         all_labels.extend(test_labels.cpu().numpy())
 
-        test_epoch_loss = test_loss / test_total
-        test_epoch_acc = test_corrects.double() / test_total
+        # test_epoch_loss = test_loss / test_total
+        # test_epoch_acc = test_corrects.double() / test_total
 
-        test_losses.append(test_epoch_loss)
-        test_acc.append(test_epoch_acc)
-        all_prob = np.array(all_prob)
+        # test_losses.append(test_epoch_loss)
+        # test_acc.append(test_epoch_acc)
+        # all_prob = np.array(all_prob)
 
-        y_true_one_hot = np.zeros_like(all_prob)
-        y_true_one_hot[np.arange(len(all_labels)), all_labels] = 1
-        brier_score = np.mean(np.sum((all_prob - y_true_one_hot) ** 2, axis=1))
+        # y_true_one_hot = np.zeros_like(all_prob)
+        # y_true_one_hot[np.arange(len(all_labels)), all_labels] = 1
+        # brier_score = np.mean(np.sum((all_prob - y_true_one_hot) ** 2, axis=1))
 
 
-        print(f'Epoch {epoch+1}/{num_epochs} | Test Acc {test_epoch_acc} | Test Loss {test_epoch_loss} | Brier {brier_score}')
-    return model, all_preds, all_prob, all_labels
+        # print(f'Epoch {epoch+1}/{num_epochs} | Test Acc {test_epoch_acc} | Test Loss {test_epoch_loss} | Brier {brier_score}')
+        # , all_preds, all_prob, all_labels
+    return model
 
 def get_confusion_matrix(all_labels, all_preds):
   cm = confusion_matrix(all_labels, all_preds)

@@ -3,9 +3,13 @@ from typing import Any, Union, Optional
 from sklearn.linear_model import LogisticRegression
 from models.models import PlayerCNN
 from dataset.torch_dataset import PlayerDataset
-import boto3
 from data import utils
 from tqdm import tqdm
+
+import torch.optim as optim
+from torch import nn
+from models.utils import train_routine
+from models.models import PlayerCNN
 
 class ProbabilityEstimator:
     def __init__(self,
@@ -31,6 +35,7 @@ class ProbabilityEstimator:
         self.model = model
         self.training_data = training_data
         self.env_path = env_path
+        self.s3 = utils._get_s3_agent(self.env_path)
 
         self.team_feature_cols = ['venue_diff_home_points', 'venue_diff_np_xg_conceded',
        'venue_diff_vaep_conceded', 'venue_diff_ppda', 'general_diff_',
@@ -52,6 +57,10 @@ class ProbabilityEstimator:
                     X_train = self.training_data[self.team_feature_cols]
                     y_train = self.training_data.target
                     self.model.fit(X_train, y_train)
+
+                elif model_type == 'player':
+                    return
+
 
         self._get_pred_odds()
         self._extend_bets()
@@ -127,9 +136,7 @@ class ProbabilityEstimator:
     
     def _get_team_features(self):
 
-        s3 = utils._get_s3_agent(self.env_path)
-
-        mastercsv = s3.get_object(
+        mastercsv = self.s3.get_object(
               Bucket='footballbets',
               Key=f"season_pickles/team_features_diff.csv",
           )
@@ -137,4 +144,9 @@ class ProbabilityEstimator:
         master_df = pd.read_csv(mastercsv['Body'], index_col=0)
         
         return master_df
+    
+
+    def _get_player_features(self):
+        return
+
     
