@@ -32,9 +32,7 @@ class PlayerDataset(Dataset):
 
         player_feats = []
         targets = []
-        player_config = []
-        targets = []
-        config = []
+        configs = []
 
         groups = self.features.groupby("game")
         for game, group in groups:
@@ -102,20 +100,19 @@ class PlayerDataset(Dataset):
             )
 
             targets.append(target)
-            player_config.append(player_config_df)
-            config.append(
-                {
-                    "fixture": game,
-                    "season": sched_match.season,
-                    "league": sched_match.league,
-                }
-            )
+
+            configs.append([
+                sched_match.league,
+                sched_match.season,
+                sched_match.date,
+                sched_match.home_team,
+                sched_match.away_team
+            ])
 
         self.data = {
             "player_features": player_feats,
             "targets": targets,
-            # "player_info": player_config,
-            "config": config,
+            "config": configs
         }
 
     def __len__(self):
@@ -125,7 +122,6 @@ class PlayerDataset(Dataset):
         return (
             self.data["player_features"][idx],
             self.data["targets"][idx],
-            # self.data["player_info"][idx],
             self.data["config"][idx],
         )
 
