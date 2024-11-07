@@ -15,11 +15,12 @@ import torch.nn.functional as F
 from models.utils import train_routine
 from models.models import PlayerCNN
 import numpy as np
+from venn_abers import VennAbersCalibrator
 
 class ProbabilityEstimator:
     def __init__(self,
-                 testing_data: pd.DataFrame,
                  bookie_odds: pd.DataFrame,
+                 testing_data: pd.DataFrame = None,
                  markets_to_play: list = ['1x2'],
                  model_type: str = 'team',
                  model: Union[LogisticRegression, PlayerCNN] = None,
@@ -55,17 +56,18 @@ class ProbabilityEstimator:
             if self.training_data is None:
             
                 if model_type == 'team':
-                    self.model = LogisticRegression(max_iter=10000)
+                    clf = LogisticRegression(max_iter=10000)
+                    self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
                     self._get_team_features()
 
-                    X_train = self.training_data[self.team_feature_cols]
+                    X_train = self.training_data.drop(self.config_cols, axis=1).iloc[:, 3:]
                     y_train = self.training_data.target
                     self.model.fit(X_train, y_train)
 
                 elif model_type == 'player':
-                    print('get features')
+                    # print('get features')
                     self._get_player_features()
-                    print('train model')
+                    # print('train model')
                     self._train_player_model()
 
 
@@ -77,7 +79,7 @@ class ProbabilityEstimator:
         bet_df_cols = ['league', 'game', 'PSCD', 'PSCH', 'PSCA', 'B365C>2.5', 'B365C<2.5']
 
         if self.model_type == 'team':
-            data_to_predict = self.features[self.team_feature_cols]
+            data_to_predict = self.features.drop(self.config_cols, axis=1).iloc[:, 3:]
             config = self.features[self.config_cols].reset_index(drop=True)
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(predictions, columns=['draw_prob', 'home_prob', 'away_prob'])
@@ -90,13 +92,13 @@ class ProbabilityEstimator:
 
             test_loader = DataLoader(self.features, batch_size=32, shuffle=True)
 
-            print('getting preds')
+            # print('getting preds')
             with torch.no_grad():
                 for test_batch in test_loader:
                     test_inputs, test_labels, match_config = test_batch
 
                     test_outputs = self.model(test_inputs)
-                    test_probabilities = F.softmax(test_outputs)
+                    test_probabilities = F.softmax(test_outputs, dim=1)
                     targets.extend(test_labels.tolist())
 
                     player_preds.append(np.array(test_probabilities))
@@ -123,7 +125,7 @@ class ProbabilityEstimator:
         pred_odds = pred_df.merge(self.odds[bet_df_cols],
                           how='left', on='game')
         
-        print(pred_odds.columns)
+        # print(pred_odds.columns)
             
         # pred_odds['matchday'].bfill(inplace=True)
         

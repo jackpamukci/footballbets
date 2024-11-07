@@ -667,7 +667,6 @@ cols_to_drop = [
     "home_np_xg_difference",
     "away_points",
     "home_points",
-    "league",
     "league_id",
     "season_id",
     "game_id",
@@ -733,6 +732,7 @@ metrics = [
 ]
 
 config_cols = [
+    "league",
     "season",
     "game",
     "date",
