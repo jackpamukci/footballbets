@@ -21,10 +21,14 @@ class ProbabilityEstimator:
     def __init__(self,
                  bookie_odds: pd.DataFrame,
                  testing_data: pd.DataFrame = None,
+                 use_diff: bool = False,
+                 normalize: bool = False,
+                 lookback: int = 4,
                  markets_to_play: list = ['1x2'],
                  model_type: str = 'team',
                  model: Union[LogisticRegression, PlayerCNN] = None,
                  training_data: pd.DataFrame = None,
+                 use_feat_selected: bool = None,
                  env_path: str = None):
         
         self.features = testing_data
@@ -42,6 +46,12 @@ class ProbabilityEstimator:
         self.training_data = training_data
         self.env_path = env_path
         self.s3 = utils._get_s3_agent(self.env_path)
+
+        self.use_diff = use_diff
+        self.normalize = normalize
+        self.lookback = lookback
+
+        self.use_feat_selected = use_feat_selected
 
         self.team_feature_cols = ['venue_diff_home_points', 'venue_diff_np_xg_conceded',
        'venue_diff_vaep_conceded', 'venue_diff_ppda', 'general_diff_',
@@ -188,12 +198,17 @@ class ProbabilityEstimator:
 
         mastercsv = self.s3.get_object(
               Bucket='footballbets',
-              Key=f"season_pickles/team_features_diff.csv",
+              Key=f"season_pickles/team_feats_{self.lookback}.csv",
           )
         
         master_df = pd.read_csv(mastercsv['Body'], index_col=0)
 
-        print(master_df.columns)
+        master_df = utils._normalize_features(master_df, 
+                                              self.use_diff, 
+                                              self.normalize, 
+                                              self.lookback)
+
+        # print(master_df.columns)
 
         self.training_data = master_df[(master_df['season'] != 2324) & (master_df['lookback'] != 1)]
 
