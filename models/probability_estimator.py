@@ -101,7 +101,7 @@ class ProbabilityEstimator:
                     )
                     y_train = self.training_data.target
 
-                    print(X_train.isna().sum())
+                    # print(X_train.isna().sum())
                     self.model.fit(X_train, y_train)
 
             if model_type == "player":
@@ -141,8 +141,8 @@ class ProbabilityEstimator:
                 )
             )
             config = self.features[self.config_cols].reset_index(drop=True)
-            print(data_to_predict.columns)
-            print(data_to_predict.isna().sum())
+            # print(data_to_predict.columns)
+            # print(data_to_predict[data_to_predict.venue_diff_home_player_rating.isna()])
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(
                 predictions, columns=["draw_prob", "home_prob", "away_prob"]
@@ -279,6 +279,7 @@ class ProbabilityEstimator:
         )
 
         master_df = pd.read_csv(mastercsv["Body"])
+        master_df.matchday.ffill(inplace=True)
 
         if not self.best_set:
             master_df = utils._normalize_features(
