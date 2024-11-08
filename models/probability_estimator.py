@@ -27,11 +27,11 @@ class ProbabilityEstimator:
         normalize: bool = False,
         lookback: int = 4,
         bookie: str = "pinnacle",
+        best_set: bool = False,
         markets_to_play: list = ["1x2"],
         model_type: str = "team",
         model: Union[LogisticRegression, PlayerCNN] = None,
         training_data: pd.DataFrame = None,
-        use_feat_selected: bool = False,
         env_path: str = None,
     ):
 
@@ -53,11 +53,10 @@ class ProbabilityEstimator:
         self.env_path = env_path
         self.s3 = utils._get_s3_agent(self.env_path)
 
+        self.best_set = best_set
         self.use_diff = use_diff
         self.normalize = normalize
         self.lookback = lookback
-
-        self.use_feat_selected = use_feat_selected
 
         self.team_feature_cols = [
             "venue_diff_home_points",
@@ -94,11 +93,15 @@ class ProbabilityEstimator:
                     self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
 
                     X_train = (
-                        self.training_data.drop(self.config_cols, axis=1).iloc[:, 3:]
-                        if self.use_feat_selected == False
-                        else self.training_data[self.team_feature_cols]
+                        self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]
+                        if self.best_set
+                        else self.training_data.drop(
+                            self.config_cols + ["league", "lookback"], axis=1
+                        )
                     )
                     y_train = self.training_data.target
+
+                    print(X_train.isna().sum())
                     self.model.fit(X_train, y_train)
 
             if model_type == "player":
@@ -131,12 +134,15 @@ class ProbabilityEstimator:
 
         if self.model_type == "team":
             data_to_predict = (
-                self.features.drop(self.config_cols, axis=1).iloc[:, 3:]
-                if self.use_feat_selected == False
-                else self.training_data[self.team_feature_cols]
+                self.features.drop(self.config_cols, axis=1).iloc[:, 4:]
+                if self.best_set
+                else self.features.drop(
+                    self.config_cols + ["league", "lookback"], axis=1
+                )
             )
             config = self.features[self.config_cols].reset_index(drop=True)
-            # print(data_to_predict.columns)
+            print(data_to_predict.columns)
+            print(data_to_predict.isna().sum())
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(
                 predictions, columns=["draw_prob", "home_prob", "away_prob"]
@@ -261,16 +267,27 @@ class ProbabilityEstimator:
 
     def _get_team_features(self):
 
+        key = (
+            "season_pickles/team_features_diff.csv"
+            if self.best_set
+            else f"season_pickles/team_feats_{self.lookback}.csv"
+        )
+
         mastercsv = self.s3.get_object(
             Bucket="footballbets",
-            Key=f"season_pickles/team_feats_{self.lookback}.csv",
+            Key=key,
         )
 
         master_df = pd.read_csv(mastercsv["Body"])
 
-        # master_df = utils._normalize_features(
-        #     master_df, self.use_diff, self.normalize, self.lookback
-        # )
+        if not self.best_set:
+            master_df = utils._normalize_features(
+                master_df,
+                self.use_diff,
+                self.normalize,
+                self.lookback,
+                ["last_cols", "venue", "general", "elo"],
+            )
 
         # print(master_df.columns)
 
