@@ -81,6 +81,7 @@ class ProbabilityEstimator:
         if self.model_type == 'team':
             data_to_predict = self.features.drop(self.config_cols, axis=1).iloc[:, 3:]
             config = self.features[self.config_cols].reset_index(drop=True)
+            print(data_to_predict.columns)
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(predictions, columns=['draw_prob', 'home_prob', 'away_prob'])
             pred_df = config.merge(pred_df, how='inner', left_index=True, right_index=True)
@@ -192,6 +193,8 @@ class ProbabilityEstimator:
         
         master_df = pd.read_csv(mastercsv['Body'], index_col=0)
 
+        print(master_df.columns)
+
         self.training_data = master_df[(master_df['season'] != 2324) & (master_df['lookback'] != 1)]
 
         if self.features is None:
@@ -203,7 +206,7 @@ class ProbabilityEstimator:
 
         player_feats = self.s3.get_object(
             Bucket='footballbets',
-            Key=f"season_pickles/master_player_feats.csv",
+            Key=f"season_pickles/player_feats_4.csv",
         )
         master_player_feats = pd.read_csv(player_feats['Body'], index_col=0)
         master_player_feats = master_player_feats[master_player_feats['lookback'] != 1]
@@ -212,14 +215,14 @@ class ProbabilityEstimator:
         master_schedule = pd.read_csv(s3schedule['Body'], index_col=0)
         master_schedule['target'] = master_schedule.apply(lambda x: 0 if x.home_score == x.away_score else (1 if x.home_score > x.away_score else 2), axis=1)
 
-        train_feats = master_player_feats[master_player_feats['season'] != 2324]
+        train_feats = master_player_feats[(master_player_feats['season'] != 2324) & (master_player_feats['lookback'] != 1)]
         train_schedule = master_schedule[master_schedule['season'] != 2324]
 
         self.training_data = PlayerDataset(train_feats,
                             train_schedule)
         
         if self.features is None:
-            test_feats = master_player_feats[master_player_feats['season'] == 2324]
+            test_feats = master_player_feats[(master_player_feats['season'] == 2324) & (master_player_feats['lookback'] != 1)]
             test_schedule = master_schedule[master_schedule['season'] == 2324]
             self.features = PlayerDataset(test_feats,
                         test_schedule)
