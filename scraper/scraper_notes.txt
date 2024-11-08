@@ -455,3 +455,75 @@ ESP-La Liga | 2324
 GER-Bundesliga | 2324 
  WhoScored Team Diff: set() 
  Understat Team Diff: set() 
+ESP-La Liga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ENG-Premier League | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ENG-Premier League | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ENG-Premier League | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ENG-Premier League | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2021 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2122 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2223 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 2324 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
