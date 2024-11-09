@@ -13,10 +13,11 @@ from pathlib import Path
 
 supported_leagues = [
     # "ESP-La Liga",
-    "FRA-Ligue 1",
+    # "FRA-Ligue 1",
     # "GER-Bundesliga",
     # "ITA-Serie A",
-    # "ENG-Premier League"
+    # "ENG-Premier League",
+    "NED-Eredivisie"
 ]
 
 
@@ -52,10 +53,10 @@ class HistoricData:
 
         logging.info(len(self.schedule))
 
-        # self._load_event_data()
-        # self._load_player_ratings()
-        # self._load_player_match_stats()
-        # self._load_team_match_data()
+        self._load_event_data()
+        self._load_player_ratings()
+        self._load_player_match_stats()
+        self._load_team_match_data()
         try:
             self._load_odds()
         except:
@@ -278,7 +279,7 @@ class HistoricData:
 def main():
 
     # for league in supported_leagues:
-    for season in [2021, 2122, 2223, 2324]:
+    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
         for league in supported_leagues:
             HistoricData(season_id=season, league_id=league)
 
