@@ -16,7 +16,6 @@ from fuzzywuzzy import fuzz, process
 from sklearn.preprocessing import MinMaxScaler
 
 
-
 current_directory = os.getcwd()
 parent_directory = os.path.dirname(current_directory)
 sys.path.append(parent_directory)
@@ -218,6 +217,7 @@ def fuzzy_match(query, choices):
     best_match, score = process.extractOne(query, choices, scorer=fuzz.token_set_ratio)
     return best_match
 
+
 def _get_s3_agent(env_path):
     try:
         load_dotenv(env_path)
@@ -235,201 +235,204 @@ def _get_s3_agent(env_path):
         return s3
     except Exception as e:
         raise ConnectionError("Connection to AWS Failed. Check Credentials.") from e
-    
-def _normalize_features(feats, 
-                        use_diff: bool = False,
-                        normalize: bool = False,
-                        lookback: int = 4,
-                        feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"]):
-        
-        elo_metrics = [
-            "elo_np_xg_season",
-            "elo_np_xg_lookback",
-            "elo_np_xg_conceded_season",
-            "elo_np_xg_conceded_lookback",
-            "elo_vaep_season",
-            "elo_vaep_lookback",
-            "elo_vaep_conceded_season",
-            "elo_vaep_conceded_lookback",
-            "elo_ppda_lookback",
-            "elo_ppda_season",
-            "elo_gen",
+
+
+def _normalize_features(
+    feats,
+    use_diff: bool = False,
+    normalize: bool = False,
+    lookback: int = 4,
+    feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
+):
+
+    elo_metrics = [
+        "elo_np_xg_season",
+        "elo_np_xg_lookback",
+        "elo_np_xg_conceded_season",
+        "elo_np_xg_conceded_lookback",
+        "elo_vaep_season",
+        "elo_vaep_lookback",
+        "elo_vaep_conceded_season",
+        "elo_vaep_conceded_lookback",
+        "elo_ppda_lookback",
+        "elo_ppda_season",
+        "elo_gen",
+    ]
+
+    config_cols = [
+        "league",
+        "season",
+        "game",
+        "date",
+        "home_team",
+        "away_team",
+        "target",
+        "matchday",
+        "lookback",
+    ]
+
+    last_cols = [
+        f"last_{lookback}_{x}_{y}"
+        for x in ["home", "away"]
+        for y in [
+            "points",
+            "np_xg",
+            "np_xg_conceded",
+            "vaep",
+            "vaep_conceded",
+            "ppda",
+            "min_allocation",
+            "player_rating",
         ]
+    ]
 
-        config_cols = [
-            "league",
-            "season",
-            "game",
-            "date",
-            "home_team",
-            "away_team",
-            "target",
-            "matchday",
-            "lookback",
+    momentum = [
+        f"last_{lookback}_{x}_{y}_{z}"
+        for x in ["home", "away"]
+        for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded"]
+        for z in ["slope", "predicted"]
+    ]
+
+    venue = [
+        f"{x}_{x}_{y}"
+        for x in ["home", "away"]
+        for y in [
+            "np_xg",
+            "np_xg_conceded",
+            "vaep",
+            "vaep_conceded",
+            "ppda",
+            "player_rating",
         ]
+    ]
+    general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
 
+    col_list = [
+        item
+        for sublist in [x for x in [last_cols, momentum, venue, general]]
+        for item in sublist
+    ]
 
+    elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
+    config = feats[config_cols]
 
-        last_cols = [
-            f"last_{lookback}_{x}_{y}"
-            for x in ["home", "away"]
-            for y in [
-                "points",
-                "np_xg",
-                "np_xg_conceded",
-                "vaep",
-                "vaep_conceded",
-                "ppda",
-                "min_allocation",
-                "player_rating",
-            ]
-        ]
+    cols_dict = {
+        "last_cols": last_cols,
+        "momentum": momentum,
+        "venue": venue,
+        "general": general,
+        "elo": elo,
+    }
 
-        momentum = [
-            f"last_{lookback}_{x}_{y}_{z}"
-            for x in ["home", "away"]
-            for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded"]
-            for z in ["slope", "predicted"]
-        ]
+    # cols = self.feat_group
+    if use_diff:
+        last_cols_diff = pd.DataFrame(
+            feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
+            - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
+            columns=[
+                f"venue_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[2:])
+                    for x in last_cols
+                    if x.split("_")[2] == "home"
+                ]
+            ],
+        )
 
-        venue = [
-            f"{x}_{x}_{y}"
-            for x in ["home", "away"]
-            for y in [
-                "np_xg",
-                "np_xg_conceded",
-                "vaep",
-                "vaep_conceded",
-                "ppda",
-                "player_rating",
-            ]
-        ]
-        general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
+        momentum_diff = pd.DataFrame(
+            feats[[x for x in momentum if x.split("_")[2] == "home"]].values
+            - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
+            columns=[
+                f"venue_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[2:])
+                    for x in momentum
+                    if x.split("_")[2] == "home"
+                ]
+            ],
+        )
 
-        col_list = [
-            item
-            for sublist in [x for x in [last_cols, momentum, venue, general]]
-            for item in sublist
-        ]
+        venue_diff = pd.DataFrame(
+            feats[[x for x in venue if x.split("_")[0] == "home"]].values
+            - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
+            columns=[
+                f"venue_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[2:])
+                    for x in venue
+                    if x.split("_")[0] == "home"
+                ]
+            ],
+        )
 
-        elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
-        config = feats[config_cols]
+        general_diff = pd.DataFrame(
+            feats[[x for x in general if x.split("_")[0] == "home"]].values
+            - feats[[x for x in general if x.split("_")[0] == "away"]].values,
+            columns=[
+                f"general_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[2:])
+                    for x in general
+                    if x.split("_")[0] == "home"
+                ]
+            ],
+        )
 
-        cols_dict = {
-            "last_cols": last_cols,
-            "momentum": momentum,
-            "venue": venue,
-            "general": general,
-            "elo": elo,
+        elo_diff = pd.DataFrame(
+            feats[[x for x in elo if x.split("_")[0] == "home"]].values
+            - feats[[x for x in elo if x.split("_")[0] == "away"]].values,
+            columns=[
+                f"elo_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[2:]) for x in elo if x.split("_")[0] == "home"
+                ]
+            ],
+        )
+
+        diff_dict = {
+            "last_cols": last_cols_diff,
+            "momentum": momentum_diff,
+            "venue": venue_diff,
+            "general": general_diff,
+            "elo": elo_diff,
         }
 
-        # cols = self.feat_group
-        if use_diff:
-            last_cols_diff = pd.DataFrame(
-                feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
-                - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
-                columns=[
-                    f"venue_diff_{x}"
-                    for x in [
-                        "_".join(x.split("_")[2:])
-                        for x in last_cols
-                        if x.split("_")[2] == "home"
-                    ]
-                ],
-            )
+        diff_data = pd.concat([diff_dict[x] for x in feat_group], axis=1)
 
-            momentum_diff = pd.DataFrame(
-                feats[[x for x in momentum if x.split("_")[2] == "home"]].values
-                - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
-                columns=[
-                    f"venue_diff_{x}"
-                    for x in [
-                        "_".join(x.split("_")[2:])
-                        for x in momentum
-                        if x.split("_")[2] == "home"
-                    ]
-                ],
-            )
-
-            venue_diff = pd.DataFrame(
-                feats[[x for x in venue if x.split("_")[0] == "home"]].values
-                - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
-                columns=[
-                    f"venue_diff_{x}"
-                    for x in [
-                        "_".join(x.split("_")[2:])
-                        for x in venue
-                        if x.split("_")[0] == "home"
-                    ]
-                ],
-            )
-
-            general_diff = pd.DataFrame(
-                feats[[x for x in general if x.split("_")[0] == "home"]].values
-                - feats[[x for x in general if x.split("_")[0] == "away"]].values,
-                columns=[
-                    f"general_diff_{x}"
-                    for x in [
-                        "_".join(x.split("_")[2:])
-                        for x in general
-                        if x.split("_")[0] == "home"
-                    ]
-                ],
-            )
-
-            elo_diff = pd.DataFrame(
-                feats[[x for x in elo if x.split("_")[0] == "home"]].values
-                - feats[[x for x in elo if x.split("_")[0] == "away"]].values,
-                columns=[
-                    f"elo_diff_{x}"
-                    for x in [
-                        "_".join(x.split("_")[2:])
-                        for x in elo
-                        if x.split("_")[0] == "home"
-                    ]
-                ],
-            )
-
-            diff_dict = {
-                "last_cols": last_cols_diff,
-                "momentum": momentum_diff,
-                "venue": venue_diff,
-                "general": general_diff,
-                "elo": elo_diff,
-            }
-
-            diff_data = pd.concat([diff_dict[x] for x in feat_group], axis=1)
-
-            met_col_list = diff_data.columns
-            features = pd.concat([config["matchday"], diff_data], axis=1)
-
-            if normalize:
-
-                features = (
-                    features.groupby("matchday", group_keys=False)
-                    .apply(lambda group: _scale_group(group, met_col_list))
-                    .drop("matchday", axis=1)
-                )
-
-            return pd.concat([config, features], axis=1)
-
-        met_col_list = [item for x in feat_group for item in cols_dict[x]]
+        met_col_list = diff_data.columns
+        features = pd.concat([config["matchday"], diff_data], axis=1)
 
         if normalize:
-            features = feats[met_col_list + ["matchday"]]
 
-            features = features.groupby("matchday", group_keys=False).apply(
-                lambda group: _scale_group(group, met_col_list)
-            ).drop('matchday', axis=1)
+            features = (
+                features.groupby("matchday", group_keys=False)
+                .apply(lambda group: _scale_group(group, met_col_list))
+                .drop("matchday", axis=1)
+            )
 
-            return pd.concat([config, features], axis=1)
+        return pd.concat([config, features], axis=1)
 
-        return pd.concat([config, feats[met_col_list]], axis=1)
+    met_col_list = [item for x in feat_group for item in cols_dict[x]]
+
+    if normalize:
+        features = feats[met_col_list + ["matchday"]]
+
+        features = (
+            features.groupby("matchday", group_keys=False)
+            .apply(lambda group: _scale_group(group, met_col_list))
+            .drop("matchday", axis=1)
+        )
+
+        return pd.concat([config, features], axis=1)
+
+    return pd.concat([config, feats[met_col_list]], axis=1)
+
 
 def _scale_group(group, met_col_list):
-        scaler = MinMaxScaler()
-        group[met_col_list] = scaler.fit_transform(group[met_col_list])
-        return group
+    scaler = MinMaxScaler()
+    group[met_col_list] = scaler.fit_transform(group[met_col_list])
+    return group
+
 
 class ProbabityModel:
     def __init__(
