@@ -1,7 +1,7 @@
 import pandas as pd
 from typing import Any, Union, Optional
 from sklearn.linear_model import LogisticRegression
-from models.models import PlayerCNN
+from models.models import PlayerCNN, ZIPoisson
 from dataset.torch_dataset import PlayerDataset
 from data import utils
 from tqdm import tqdm
@@ -31,7 +31,7 @@ class ProbabilityEstimator:
         bookie: str = "pinnacle",
         best_set: bool = False,
         markets_to_play: list = ["1x2"],
-        model_type: str = "team",
+        model_type: str = "class",
         model: Union[LogisticRegression, PlayerCNN] = None,
         training_data: pd.DataFrame = None,
         env_path: str = None,
@@ -39,21 +39,18 @@ class ProbabilityEstimator:
 
         self.features = testing_data
         self.odds = bookie_odds
-
-        if all(market not in ["1x2", "OU", "BTTS"] for market in markets_to_play):
-            raise ValueError("Only available markets are '1x2', 'OU', and 'BTTS'")
-
-        if model_type not in ["team", "player", "hybrid"]:
-            raise ValueError(
-                "Only available markets are 'team', 'player', and 'hybrid'"
-            )
-
         self.markets = markets_to_play
         self.model_type = model_type
         self.model = model
         self.training_data = training_data
         self.env_path = env_path
         self.s3 = utils._get_s3_agent(self.env_path)
+
+        if all(market not in ["1x2", "OU", "BTTS"] for market in self.markets):
+            raise ValueError("Only available markets are '1x2', 'OU', and 'BTTS'")
+
+        if self.model_type not in ["class", "zip", "hybrid"]:
+            raise ValueError("Only available models are 'class', 'zip', and 'hybrid'")
 
         self.best_set = best_set
         self.use_diff = use_diff
@@ -86,30 +83,6 @@ class ProbabilityEstimator:
             "target",
         ]
 
-        if self.training_data is None:
-
-            if model_type == "team":
-                self._get_team_features()
-                if self.model is None:
-                    clf = LogisticRegression(max_iter=10000)
-                    self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
-
-                    X_train = (
-                        self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]
-                        if self.best_set
-                        else self.training_data.drop(
-                            self.config_cols + ["league", "lookback"], axis=1
-                        )
-                    )
-                    y_train = self.training_data.target
-
-                    self.model.fit(X_train, y_train)
-
-            if model_type == "player":
-                self._get_player_features()
-                if self.model is None:
-                    self._train_player_model()
-
         if self.odds is None:
             self._get_odds()
 
@@ -123,6 +96,21 @@ class ProbabilityEstimator:
         self.bookie = bookie
         self.bet_df_cols = bookie_cols[self.bookie]
 
+        if self.training_data is None:
+
+            if self.model_type != "player":
+                self._get_team_features()
+
+                if self.model is None and self.model_type == "class":
+                    self._train_team_model()
+                elif self.model is None and self.model_type == "zip":
+                    self.model = ZIPoisson(self.training_data, self.odds)
+
+            if self.model_type == "player":
+                self._get_player_features()
+                if self.model is None:
+                    self._train_player_model()
+
         self._get_pred_odds()
         self._extend_bets()
 
@@ -133,7 +121,7 @@ class ProbabilityEstimator:
             "game",
         ] + self.bet_df_cols
 
-        if self.model_type == "team":
+        if self.model_type == "class":
             data_to_predict = (
                 self.features.drop(self.config_cols, axis=1).iloc[:, 4:]
                 if self.best_set
@@ -149,6 +137,21 @@ class ProbabilityEstimator:
             pred_df = config.merge(
                 pred_df, how="inner", left_index=True, right_index=True
             )
+        elif self.model_type == "zip":
+            data_to_predict = self.features
+
+            config = data_to_predict[self.config_cols]
+
+            data_to_predict = self.model.predict(data_to_predict)
+            data_to_predict[["draw_prob", "home_prob", "away_prob"]] = (
+                data_to_predict.goal_matrix.apply(lambda x: self._zip_matrix_parser(x))
+            )
+
+            config[["draw_prob", "home_prob", "away_prob"]] = data_to_predict[
+                ["draw_prob", "home_prob", "away_prob"]
+            ].values
+            pred_df = config
+            print(pred_df.shape)
 
         elif self.model_type == "player":
             player_preds = []
@@ -349,6 +352,20 @@ class ProbabilityEstimator:
 
         self.odds = master_odds
 
+    def _train_team_model(self):
+        clf = LogisticRegression(max_iter=10000)
+        self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
+
+        X_train = (
+            self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]
+            if self.best_set
+            else self.training_data.drop(
+                self.config_cols + ["league", "lookback"], axis=1
+            )
+        )
+        y_train = self.training_data.target
+        self.model.fit(X_train, y_train)
+
     def _train_player_model(self):
 
         train_loader = DataLoader(self.training_data, batch_size=32, shuffle=True)
@@ -358,3 +375,29 @@ class ProbabilityEstimator:
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self.model = train_routine(model, train_loader, optimizer, loss_fn, 50)
+
+    def _zip_matrix_parser(self, goal_matrix):
+
+        rows = len(goal_matrix)
+        columns = len(goal_matrix[0])
+        draw = np.trace(goal_matrix)
+        away_win = 0.0
+        home_win = 0.0
+        over2 = 0.0
+        under2 = 0.0
+        btts = 0.0
+
+        for away_goals in range(rows):
+            for home_goals in range(columns):
+                if home_goals > away_goals:
+                    home_win += goal_matrix[home_goals, away_goals]
+                if away_goals > home_goals:
+                    away_win += goal_matrix[home_goals, away_goals]
+                if away_goals + home_goals >= 3:
+                    over2 += goal_matrix[home_goals, away_goals]
+                if away_goals + home_goals < 3:
+                    under2 += goal_matrix[home_goals, away_goals]
+                if (away_goals != 0) and (home_goals != 0):
+                    btts += goal_matrix[home_goals, away_goals]
+
+        return pd.Series([draw, home_win, away_win])
