@@ -16,8 +16,6 @@ class ZIPoisson:
         training_data: pd.DataFrame,
         odds_data: pd.DataFrame,
     ):
-        print("hello")
-
         self.training_data = training_data
         self.odds = odds_data
 
@@ -85,14 +83,14 @@ class ZIPoisson:
             self.odds[["game", "FTHG", "FTAG"]], how="inner", on="game"
         )
 
-        print("getting zero data")
+        print("Collecting data for Zero goals model")
         self._get_zero_data()
         self.zero_model = LogisticRegression()
         self.zero_model.fit(
             self.zero_training.drop("target", axis=1), self.zero_training.target
         )
 
-        print("getting lambda data")
+        print("Collecting data for lambda goal model")
         self._get_lambda_data()
         lambda_x = sm.add_constant(self.lambda_training.drop("target", axis=1))
         self.lambda_model = sm.GLM(
