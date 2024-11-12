@@ -104,7 +104,7 @@ class ProbabilityEstimator:
                 if self.model is None and self.model_type == "class":
                     self._train_team_model()
                 elif self.model is None and self.model_type == "zip":
-                    self.model = ZIPoisson(self.training_data, self.odds)
+                    self.model = ZIPoisson(self.training_data, self.odds, self.lookback)
 
             if self.model_type == "player":
                 self._get_player_features()
@@ -353,8 +353,8 @@ class ProbabilityEstimator:
         self.odds = master_odds
 
     def _train_team_model(self):
-        clf = LogisticRegression(max_iter=10000)
-        self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
+        self.model = LogisticRegression(max_iter=10000)
+        # self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
 
         X_train = (
             self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]

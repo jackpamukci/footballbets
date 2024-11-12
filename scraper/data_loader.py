@@ -12,12 +12,11 @@ from pathlib import Path
 
 
 supported_leagues = [
-    # "ESP-La Liga",
-    # "FRA-Ligue 1",
-    # "GER-Bundesliga",
-    # "ITA-Serie A",
-    # "ENG-Premier League",
-    "NED-Eredivisie"
+    "ESP-La Liga",
+    "FRA-Ligue 1",
+    "GER-Bundesliga",
+    "ITA-Serie A",
+    "ENG-Premier League",
 ]
 
 
@@ -279,7 +278,7 @@ class HistoricData:
 def main():
 
     # for league in supported_leagues:
-    for season in [1718, 1819, 1920, 2021, 2122, 2223, 2324]:
+    for season in [2425]:
         for league in supported_leagues:
             HistoricData(season_id=season, league_id=league)
 

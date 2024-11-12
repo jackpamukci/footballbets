@@ -12,25 +12,24 @@ from scipy.stats import poisson
 
 class ZIPoisson:
     def __init__(
-        self,
-        training_data: pd.DataFrame,
-        odds_data: pd.DataFrame,
+        self, training_data: pd.DataFrame, odds_data: pd.DataFrame, lookback: int
     ):
         self.training_data = training_data
         self.odds = odds_data
+        self.lookback = lookback
 
         self.home_cols = [
-            "last_6_home_points",
-            "last_6_home_np_xg",
-            "last_6_home_vaep",
-            "last_6_home_ppda",
-            "last_6_home_min_allocation",
-            "last_6_home_player_rating",
-            "last_6_away_points",
-            "last_6_away_np_xg_conceded",
-            "last_6_away_vaep_conceded",
-            "last_6_away_ppda",
-            "last_6_away_player_rating",
+            f"last_{self.lookback}_home_points",
+            f"last_{self.lookback}_home_np_xg",
+            f"last_{self.lookback}_home_vaep",
+            f"last_{self.lookback}_home_ppda",
+            f"last_{self.lookback}_home_min_allocation",
+            f"last_{self.lookback}_home_player_rating",
+            f"last_{self.lookback}_away_points",
+            f"last_{self.lookback}_away_np_xg_conceded",
+            f"last_{self.lookback}_away_vaep_conceded",
+            f"last_{self.lookback}_away_ppda",
+            f"last_{self.lookback}_away_player_rating",
             "home_home_np_xg",
             "home_home_vaep",
             "home_home_ppda",
@@ -46,17 +45,17 @@ class ZIPoisson:
         ]
 
         self.away_cols = [
-            "last_6_away_points",
-            "last_6_away_np_xg",
-            "last_6_away_vaep",
-            "last_6_away_ppda",
-            "last_6_away_min_allocation",
-            "last_6_away_player_rating",
-            "last_6_home_points",
-            "last_6_home_np_xg_conceded",
-            "last_6_home_vaep_conceded",
-            "last_6_home_ppda",
-            "last_6_home_player_rating",
+            f"last_{self.lookback}_away_points",
+            f"last_{self.lookback}_away_np_xg",
+            f"last_{self.lookback}_away_vaep",
+            f"last_{self.lookback}_away_ppda",
+            f"last_{self.lookback}_away_min_allocation",
+            f"last_{self.lookback}_away_player_rating",
+            f"last_{self.lookback}_home_points",
+            f"last_{self.lookback}_home_np_xg_conceded",
+            f"last_{self.lookback}_home_vaep_conceded",
+            f"last_{self.lookback}_home_ppda",
+            f"last_{self.lookback}_home_player_rating",
             "away_away_np_xg",
             "away_away_vaep",
             "away_away_ppda",
