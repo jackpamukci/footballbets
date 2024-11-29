@@ -1,0 +1,131 @@
+ESP-La Liga | 1415 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1415 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1415 
+ WhoScored Team Diff: {'Thonon Evian Grand Geneve'} 
+ Understat Team Diff: {'Evian Thonon Gaillard'} 
+FRA-Ligue 1 | 1415 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1415 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834800 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834792 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834774 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834784 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834810 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834788 unable to load events 
+GER-Bundesliga | 1415 
+ WhoScored Game ID 834778 unable to load events 
+ESP-La Liga | 1415 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1415 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1415 
+ WhoScored Team Diff: {'Thonon Evian Grand Geneve'} 
+ Understat Team Diff: {'Evian Thonon Gaillard'} 
+FRA-Ligue 1 | 1415 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1415 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 1617 
+ WhoScored Game ID 1076372 unable to load events 
+ESP-La Liga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 1617 
+ WhoScored Game ID 1351262 unable to load ratings 
+FRA-Ligue 1 | 1617 
+ WhoScored Game ID 1076372 unable to load ratings 
+FRA-Ligue 1 | 1617 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ WhoScored Game ID 1102809 unable to load events 
+ESP-La Liga | 1617 
+ WhoScored Game ID 1102805 unable to load events 
+ESP-La Liga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1617 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 1617 
+ WhoScored Game ID 1351262 unable to load ratings 
+FRA-Ligue 1 | 1617 
+ WhoScored Game ID 1076372 unable to load ratings 
+FRA-Ligue 1 | 1617 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1617 
+ Betting Data Unavailable (must download manually) 
+ITA-Serie A | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ITA-Serie A | 1617 
+ Betting Data Unavailable (must download manually) 
+ENG-Premier League | 1617 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ENG-Premier League | 1617 
+ Betting Data Unavailable (must download manually) 
+ESP-La Liga | 1516 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+ESP-La Liga | 1516 
+ Betting Data Unavailable (must download manually) 
+FRA-Ligue 1 | 1516 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+FRA-Ligue 1 | 1516 
+ WhoScored Game ID 1351203 unable to load ratings 
+FRA-Ligue 1 | 1516 
+ Betting Data Unavailable (must download manually) 
+GER-Bundesliga | 1516 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
+GER-Bundesliga | 1516 
+ Betting Data Unavailable (must download manually) 
+ITA-Serie A | 1516 
+ WhoScored Team Diff: {'AC Carpi'} 
+ Understat Team Diff: {'Carpi'} 
+ITA-Serie A | 1516 
+ Betting Data Unavailable (must download manually) 
+ENG-Premier League | 1516 
+ WhoScored Team Diff: set() 
+ Understat Team Diff: set() 
