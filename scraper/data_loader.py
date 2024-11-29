@@ -207,7 +207,7 @@ class HistoricData:
 
         understat_schedule = self.understat.read_schedule().reset_index()
 
-        european_schedule = get_european_schedule(self.season_id)
+        # european_schedule = get_european_schedule(self.season_id)
 
         master_schedule = epl_schedule.merge(
             understat_schedule[["game", "game_id"]],
@@ -244,13 +244,13 @@ class HistoricData:
             Body=schedule_match.getvalue(),
         )
 
-        europe = StringIO()
-        european_schedule.to_csv(europe, index=True)
-        self.s3.put_object(
-            Bucket=self.bucket,
-            Key=f"European_Schedules/{self.season_id}_schedule.csv",
-            Body=europe.getvalue(),
-        )
+        # europe = StringIO()
+        # european_schedule.to_csv(europe, index=True)
+        # self.s3.put_object(
+        #     Bucket=self.bucket,
+        #     Key=f"European_Schedules/{self.season_id}_schedule.csv",
+        #     Body=europe.getvalue(),
+        # )
 
         return master_schedule
 
@@ -278,9 +278,9 @@ class HistoricData:
 def main():
 
     # for league in supported_leagues:
-    for season in [2425]:
-        for league in supported_leagues:
-            HistoricData(season_id=season, league_id=league)
+    for season in [1516]:
+        # for league in supported_leagues:
+        HistoricData(season_id=season, league_id="ENG-Premier League")
 
 
 if __name__ == "__main__":

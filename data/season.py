@@ -76,15 +76,16 @@ class Season:
         if self.get_dist == True:
             self.schedule = utils.get_distances(self.schedule)
 
-        s3_europe = self.s3.get_object(
-            Bucket=self.bucket,
-            Key=f"European_Schedules/{self.season_id}_schedule.csv",
-        )
-        europe = pd.read_csv(StringIO(s3_europe["Body"].read().decode("utf-8")))
+        if self.season_id not in [1617, 1516]:
+            s3_europe = self.s3.get_object(
+                Bucket=self.bucket,
+                Key=f"European_Schedules/{self.season_id}_schedule.csv",
+            )
+            europe = pd.read_csv(StringIO(s3_europe["Body"].read().decode("utf-8")))
 
-        self.schedule = pd.concat(
-            [self.schedule, europe], ignore_index=True
-        ).sort_values("start_time")
+            self.schedule = pd.concat(
+                [self.schedule, europe], ignore_index=True
+            ).sort_values("start_time")
 
         self.schedule = self._get_rest_and_matchday()
 
@@ -298,5 +299,3 @@ class Season:
             "schedule": schedule,
             "team_stats": team_stats,
         }
-
-    
