@@ -450,7 +450,8 @@ def _normalize_features(
 
 
 def _scale_group(group, met_col_list):
-    scaler = MinMaxScaler()
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+
     group[met_col_list] = scaler.fit_transform(group[met_col_list])
     return group
 
