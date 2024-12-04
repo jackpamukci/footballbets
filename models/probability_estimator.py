@@ -34,8 +34,6 @@ class ProbabilityEstimator:
         version: int = 1,
         normalize: bool = False,
         lookback: int = 6,
-        version: int = 1,
-        betting_seasons: list = [2324],
         bookie: str = "pinnacle",
         feature_selection: str = "none",
         markets_to_play: list = ["1x2"],
