@@ -1,6 +1,9 @@
 import pandas as pd
 from typing import Any, Union, Optional
 from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import SequentialFeatureSelector
+from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import log_loss
 from models.models import PlayerCNN, ZIPoisson
 from dataset.torch_dataset import PlayerDataset
 from data import utils
@@ -25,11 +28,11 @@ class ProbabilityEstimator:
         self,
         bookie_odds: pd.DataFrame = None,
         testing_data: pd.DataFrame = None,
-        use_diff: bool = False,
+        use_diff: bool = True,
         normalize: bool = False,
-        lookback: int = 4,
+        lookback: int = 6,
         bookie: str = "pinnacle",
-        best_set: bool = False,
+        feature_selection: str = "none",
         markets_to_play: list = ["1x2"],
         model_type: str = "class",
         model: Union[LogisticRegression, PlayerCNN] = None,
@@ -49,10 +52,13 @@ class ProbabilityEstimator:
         if all(market not in ["1x2", "OU", "BTTS"] for market in self.markets):
             raise ValueError("Only available markets are '1x2', 'OU', and 'BTTS'")
 
-        if self.model_type not in ["class", "zip", "hybrid"]:
-            raise ValueError("Only available models are 'class', 'zip', and 'hybrid'")
+        if self.model_type not in ["class", "zip", "player"]:
+            raise ValueError("Only available models are 'class', 'zip', and 'player'")
 
-        self.best_set = best_set
+        if feature_selection not in ["lasso", "forward", "none"]:
+             raise ValueError("Only available feature selection methods are 'lasso', 'forward', and 'none'")
+
+        self.feature_selection = feature_selection
         self.use_diff = use_diff
         self.normalize = normalize
         self.lookback = lookback
@@ -122,13 +128,12 @@ class ProbabilityEstimator:
         ] + self.bet_df_cols
 
         if self.model_type == "class":
-            data_to_predict = (
-                self.features.drop(self.config_cols, axis=1).iloc[:, 4:]
-                if self.best_set
-                else self.features.drop(
-                    self.config_cols + ["league", "lookback"], axis=1
-                )
-            )
+
+            # TODO: errors on wrong columns
+            data_to_predict = self.features[self.selected_features]
+            # print(self.feature_selection)
+            # print(set(data_to_predict.columns).difference(self.selected_features))
+
             config = self.features[self.config_cols].reset_index(drop=True)
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(
@@ -210,10 +215,6 @@ class ProbabilityEstimator:
             on="game",
         )
 
-        # print(pred_odds.columns)
-
-        # pred_odds['matchday'].bfill(inplace=True)
-
         self.pred_odds = pred_odds
 
     def _extend_bets(self):
@@ -269,11 +270,7 @@ class ProbabilityEstimator:
 
     def _get_team_features(self):
 
-        key = (
-            "season_pickles/team_features_diff.csv"
-            if self.best_set
-            else f"season_pickles/team_feats_{self.lookback}.csv"
-        )
+        key = f"season_pickles/team_feats_{self.lookback}.csv"
 
         mastercsv = self.s3.get_object(
             Bucket="footballbets",
@@ -283,16 +280,13 @@ class ProbabilityEstimator:
         master_df = pd.read_csv(mastercsv["Body"])
         master_df.matchday.ffill(inplace=True)
 
-        if not self.best_set:
-            master_df = _normalize_features(
-                master_df,
-                self.use_diff,
-                self.normalize,
-                self.lookback,
-                ["last_cols", "venue", "general", "elo"],
-            )
-
-        # print(master_df.columns)
+        master_df = _normalize_features(
+            master_df,
+            self.use_diff,
+            self.normalize,
+            self.lookback,
+            ["last_cols", "venue", "general", "momentum", "elo"],
+        )
 
         self.training_data = master_df[
             (master_df["season"] != 2324) & (master_df["lookback"] != 1)
@@ -309,13 +303,13 @@ class ProbabilityEstimator:
 
         player_feats = self.s3.get_object(
             Bucket="footballbets",
-            Key=f"season_pickles/player_feats_4.csv",
+            Key=f"season_pickles/player_feats_{self.lookback}.csv",
         )
         master_player_feats = pd.read_csv(player_feats["Body"])
         master_player_feats = master_player_feats[master_player_feats["lookback"] != 1]
 
         s3schedule = self.s3.get_object(
-            Bucket="footballbets", Key=f"season_pickles/team_feats_{self.lookback}.csv"
+            Bucket="footballbets", Key=f"season_pickles/master_schedule.csv"
         )
         master_schedule = pd.read_csv(s3schedule["Body"], index_col=0)
         master_schedule["target"] = master_schedule.apply(
@@ -353,25 +347,51 @@ class ProbabilityEstimator:
         self.odds = master_odds
 
     def _train_team_model(self):
-        self.model = LogisticRegression(max_iter=10000)
-        # self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
 
-        X_train = (
-            self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]
-            if self.best_set
-            else self.training_data.drop(
-                self.config_cols + ["league", "lookback"], axis=1
-            )
-        )
+        # TODO: get optimal feature set
+        X_train = self.training_data.drop(self.config_cols + ["league", "lookback"], axis=1)
+        
         y_train = self.training_data.target
-        self.model.fit(X_train, y_train)
+
+        if self.feature_selection == "lasso":
+            lasso = LogisticRegression(penalty='l1', solver='liblinear', max_iter=1000)
+            param_grid = {'C': np.logspace(-3, 3, 10)}  # C is the inverse of lambda
+            grid_search = GridSearchCV(lasso, param_grid, scoring='neg_log_loss', cv=6)
+
+            grid_search.fit(X_train, y_train)
+            self.model = grid_search.best_estimator_
+            self.selected_features = X_train.columns
+
+        elif self.feature_selection == "forward":
+
+            self.selected_features = ['venue_diff_home_points', 'venue_diff_home_np_xg',
+            'venue_diff_home_np_xg_conceded', 'venue_diff_home_vaep',
+            'venue_diff_home_vaep_conceded', 'venue_diff_home_min_allocation',
+            'venue_diff_np_xg', 'venue_diff_np_xg_conceded', 'general_diff_points',
+            'venue_diff_home_np_xg_slope', 'venue_diff_home_np_xg_predicted',
+            'venue_diff_home_np_xg_conceded_slope',
+            'venue_diff_home_np_xg_conceded_predicted',
+            'venue_diff_home_vaep_predicted', 'venue_diff_home_vaep_conceded_slope',
+            'elo_diff_np_xg_season', 'elo_diff_vaep_conceded_season']
+
+            X_train_selected = X_train[self.selected_features]
+
+            self.model = LogisticRegression(max_iter=1000)
+            self.model.fit(X_train_selected, y_train)
+
+
+        else:
+            self.model = LogisticRegression(max_iter=1000)
+            self.model.fit(X_train, y_train)
+            self.selected_features = X_train.columns
+            
 
     def _train_player_model(self):
 
         train_loader = DataLoader(self.training_data, batch_size=32, shuffle=True)
 
         learning_rate = 0.0001
-        model = PlayerCNN(player_dim=14, feature_dim=30)
+        model = PlayerCNN(player_dim=14, feature_dim=31)
         loss_fn = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=learning_rate)
         self.model = train_routine(model, train_loader, optimizer, loss_fn, 50)

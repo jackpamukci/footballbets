@@ -1,6 +1,6 @@
 import pandas as pd
 from data.season import Season
-from data.utils import best_name_match, fuzzy_match
+from data.utils import best_name_match, fuzzy_match, _fix_positions
 from tqdm import tqdm
 import numpy as np
 from unidecode import unidecode
@@ -62,7 +62,7 @@ class PlayerFeatures:
             on=["game"],
         )
 
-        features_df = self._fix_positions(features_df)
+        features_df = _fix_positions(features_df)
         features_df = self._calculate_features(features_df)
         features_df = (
             features_df.sort_values(
@@ -322,29 +322,6 @@ class PlayerFeatures:
         self.lookback_matches = lookback_matches
 
         return features
-
-    def _fix_positions(self, features_df):
-        position_rep = {
-            "CB": ["DC"],
-            "FB": ["DR", "DL"],
-            "DM": ["DMC", "DMR", "DML"],
-            "CM": ["AMC", "MC", "MR", "ML"],
-            "FW": ["FW", "FWR", "FWL", "AMR", "AML"],
-            "GK": ["GK"],
-            "Sub": ["Sub"],
-        }
-
-        pos = {}
-
-        for position, to_replace_list in position_rep.items():
-            for to_replace in to_replace_list:
-                pos[to_replace] = position
-
-        features_df.position = features_df.position.apply(
-            lambda x: x.replace(x, pos[x])
-        )
-
-        return features_df
 
     def _match_player_names(self, features_df):
         # print(len(features_df.player.unique()))
