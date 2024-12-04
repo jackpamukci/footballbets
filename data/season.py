@@ -1,7 +1,5 @@
 import os
 import pandas as pd
-import boto3
-from dotenv import load_dotenv
 from io import StringIO
 import socceraction.spadl as spadl
 from data import utils
@@ -28,7 +26,7 @@ class Season:
         self.bucket = bucket
         self.env_path = env_path
         self.get_dist = get_dist
-        self._get_s3_agent()
+        self.s3 = utils._get_s3_agent(env_path)
 
         _data = self._load_data()
         self.events = _data["events"]
@@ -43,9 +41,6 @@ class Season:
 
         print("process data")
         self._process_event_data()
-        # self._process_team_names()
-        # self._process_player_names()
-        # print(_config.TEAMNAME_REPLACEMENTS)
 
     def _process_event_data(self):
         self.events = spadl.add_names(self.events)
@@ -67,6 +62,8 @@ class Season:
         self.events["nextEvent"] = self.events.shift(-1, fill_value=0)["type_name"]
         self.events["nextTeamId"] = self.events.shift(-1, fill_value=0)["team_id"]
 
+        self.events = self.events.dropna(subset="game_id")
+
         self.events = utils.get_season_possessions(self.events)
 
         xgm = xG(self.events)
@@ -79,15 +76,16 @@ class Season:
         if self.get_dist == True:
             self.schedule = utils.get_distances(self.schedule)
 
-        s3_europe = self.s3.get_object(
-            Bucket=self.bucket,
-            Key=f"European_Schedules/{self.season_id}_schedule.csv",
-        )
-        europe = pd.read_csv(StringIO(s3_europe["Body"].read().decode("utf-8")))
+        if self.season_id not in [1617, 1516]:
+            s3_europe = self.s3.get_object(
+                Bucket=self.bucket,
+                Key=f"European_Schedules/{self.season_id}_schedule.csv",
+            )
+            europe = pd.read_csv(StringIO(s3_europe["Body"].read().decode("utf-8")))
 
-        self.schedule = pd.concat(
-            [self.schedule, europe], ignore_index=True
-        ).sort_values("start_time")
+            self.schedule = pd.concat(
+                [self.schedule, europe], ignore_index=True
+            ).sort_values("start_time")
 
         self.schedule = self._get_rest_and_matchday()
 
@@ -301,19 +299,3 @@ class Season:
             "schedule": schedule,
             "team_stats": team_stats,
         }
-
-    def _get_s3_agent(self):
-        try:
-            load_dotenv(self.env_path)
-            aws_access_key = os.getenv("AWS_ACCESS_KEY")
-            aws_secret_access = os.getenv("AWS_SECRET_ACCESS")
-            aws_region = os.getenv("AWS_REGION")
-
-            self.s3 = boto3.client(
-                "s3",
-                aws_access_key_id=aws_access_key,
-                aws_secret_access_key=aws_secret_access,
-                region_name=aws_region,
-            )
-        except Exception as e:
-            raise ConnectionError("Connection to AWS Failed. Check Credentials.") from e

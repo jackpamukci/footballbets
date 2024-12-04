@@ -5,6 +5,7 @@ from tqdm import tqdm
 import statistics
 from datetime import datetime
 from sklearn.preprocessing import MinMaxScaler
+from data.utils import _fix_positions
 
 
 class TeamFeatures:
@@ -15,7 +16,9 @@ class TeamFeatures:
         lookback: int = 3,
         k_rate: int = 20,
         use_diff: bool = False,
-        feat_group: list = ["last_3", "momentum", "venue", "general"],
+        use_dist: bool = False,
+        normalize: bool = True,
+        feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
     ):
 
         self.met_col_list = None
@@ -26,13 +29,26 @@ class TeamFeatures:
         self.k_rate = k_rate
         self.metrics = metrics
         self.elo_metrics = elo_metrics
-        self.use_dist = season_data.get_dist
+        self.use_dist = use_dist
         self.use_diff = use_diff
+        self.normalize = normalize
         self.feat_group = feat_group
 
         self.metrics_calc = False
 
         features_df = self.season.team_stats.copy()
+        player_ratings = self.season.player_ratings.copy()
+        
+        features_df = self._process_features(features_df)
+        self.features = self._calculate_lineup_strength(features_df, player_ratings)
+        # self.features = features_df
+
+    def _process_features(self, features_df):
+
+        # sanity check for missing data
+        fixture_list = self.season.events.fixture.unique()
+        features_df = features_df[features_df.game.isin(fixture_list)]
+
         features_df = self._get_season_points(features_df)
         features_df = self._get_vaep_shots_target(features_df)
         features_df = self._get_min_allocation(features_df)
@@ -43,66 +59,167 @@ class TeamFeatures:
             features_df = self._calculate_elo(features_df, self.k_rate)
 
         features_df = self._get_proper_cols(features_df)
-        # self._filter_features(features_df)
-        # features_df = self._normalize_features(features_df)
+        features_df = self._normalize_features(features_df)
 
-        self.features = features_df
+        return features_df
 
     def _normalize_features(self, feats):
-        if self.use_dist == True:
-            config_cols.append("distance")
+
+        last_cols = [
+            f"last_{self.lookback}_{x}_{y}"
+            for x in ["home", "away"]
+            for y in [
+                "points",
+                "np_xg",
+                "np_xg_conceded",
+                "vaep",
+                "vaep_conceded",
+                "ppda",
+                "min_allocation",
+                "player_rating",
+            ]
+        ]
+
+        momentum = [
+            f"last_{self.lookback}_{x}_{y}_{z}"
+            for x in ["home", "away"]
+            for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded"]
+            for z in ["slope", "predicted"]
+        ]
+
+        venue = [
+            f"{x}_{x}_{y}"
+            for x in ["home", "away"]
+            for y in [
+                "np_xg",
+                "np_xg_conceded",
+                "vaep",
+                "vaep_conceded",
+                "ppda",
+                "player_rating",
+            ]
+        ]
+        general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
+
+        col_list = [
+            item
+            for sublist in [x for x in [last_cols, momentum, venue, general]]
+            for item in sublist
+        ]
+
+        elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
         config = feats[config_cols]
 
-        cols = self.feat_group
+        cols_dict = {
+            "last_cols": last_cols,
+            "momentum": momentum,
+            "venue": venue,
+            "general": general,
+            "elo": elo,
+        }
+
+        # cols = self.feat_group
         if self.use_diff:
-            last_3_diff = pd.DataFrame(
-                feats[[x for x in last_3 if x.split("_")[2] == "home"]].values
-                - feats[[x for x in last_3 if x.split("_")[2] == "away"]].values,
-                columns=last_3_diff_cols,
+            last_cols_diff = pd.DataFrame(
+                feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
+                - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in last_cols
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
             )
 
             momentum_diff = pd.DataFrame(
                 feats[[x for x in momentum if x.split("_")[2] == "home"]].values
                 - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
-                columns=momentum_diff_cols,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in momentum
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
             )
 
             venue_diff = pd.DataFrame(
                 feats[[x for x in venue if x.split("_")[0] == "home"]].values
                 - feats[[x for x in venue if x.split("_")[0] == "away"]].values,
-                columns=venue_diff_cols,
+                columns=[
+                    f"venue_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in venue
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
             )
 
             general_diff = pd.DataFrame(
                 feats[[x for x in general if x.split("_")[0] == "home"]].values
                 - feats[[x for x in general if x.split("_")[0] == "away"]].values,
-                columns=general_diff_cols,
+                columns=[
+                    f"general_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in general
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
+            )
+
+            elo_diff = pd.DataFrame(
+                feats[[x for x in elo if x.split("_")[0] == "home"]].values
+                - feats[[x for x in elo if x.split("_")[0] == "away"]].values,
+                columns=[
+                    f"elo_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in elo
+                        if x.split("_")[0] == "home"
+                    ]
+                ],
             )
 
             diff_dict = {
-                "last_3": last_3_diff,
+                "last_cols": last_cols_diff,
                 "momentum": momentum_diff,
                 "venue": venue_diff,
                 "general": general_diff,
+                "elo": elo_diff,
             }
 
             diff_data = pd.concat([diff_dict[x] for x in self.feat_group], axis=1)
 
-            return pd.concat([config, diff_data], axis=1)
+            self.met_col_list = diff_data.columns
+            features = pd.concat([config["matchday"], diff_data], axis=1)
 
-        col_list = [
-            item for sublist in [globals()[x] for x in cols] for item in sublist
-        ]
+            if self.normalize:
 
-        self.met_col_list = col_list
+                features = (
+                    features.groupby("matchday", group_keys=False)
+                    .apply(self._scale_group)
+                    .drop("matchday", axis=1)
+                )
 
-        norm_features = feats.groupby("matchday", group_keys=False).apply(
-            self._scale_group
-        )
-        # ONly for testing! REMOVE feats[cols_to_drop]
-        return pd.concat(
-            [config, feats[cols_to_drop], norm_features[self.met_col_list]], axis=1
-        )
+            return pd.concat([config, features], axis=1)
+
+        self.met_col_list = [item for x in self.feat_group for item in cols_dict[x]]
+
+        if self.normalize:
+            features = feats[self.met_col_list + ["matchday"]]
+
+            features = features.groupby("matchday", group_keys=False).apply(
+                self._scale_group
+            ).drop('matchday', axis=1)
+
+            return pd.concat([config, features], axis=1)
+
+        return pd.concat([config, feats[self.met_col_list]], axis=1)
 
     def _calculate_elo(self, feats, k_rate):
         """
@@ -136,7 +253,9 @@ class TeamFeatures:
                     if column_name not in feats.columns:
                         feats[column_name] = 1500
 
-                    if games_played < self.lookback - 1:
+                    if (games_played < 1) or (
+                        games_played < 3 and metric.split("_")[-1] == "venue"
+                    ):
                         continue
 
                     else:
@@ -151,10 +270,13 @@ class TeamFeatures:
                         )
                         last_match = prev_matches.iloc[-1]
                         lm_ind = "home" if last_match.home_team == team else "away"
+                        lm_opp_ind = "home" if lm_ind == "away" else "away"
                         old_elo = last_match[f"{lm_ind}_{metric}"]
 
                         # Determine the core metric based on the type
-                        if metric.split("_")[2] == "xg":
+                        if metric.split("_")[1] == "gen":
+                            core_metric = "gen"
+                        elif metric.split("_")[2] == "xg":
                             core_metric = "np_xg"
                         elif metric.split("_")[1] == "vaep":
                             core_metric = "vaep"
@@ -164,46 +286,106 @@ class TeamFeatures:
                         # Determine expected and actual metrics
                         if metric.split("_")[-1] == "season":
                             if core_metric == "ppda":
-                                actual_metric_name = f"{ind}_{core_metric}"
-                                expected_metric_name = f"{ind}_{ind}_{core_metric}"
+                                actual_metric_name = f"{lm_ind}_{core_metric}"
+                                expected_metric_name = (
+                                    f"{lm_ind}_{lm_ind}_{core_metric}"
+                                )
                             else:
                                 if metric.split("_")[-2] == "conceded":
                                     expected_metric_name = (
-                                        f"{ind}_{ind}_{core_metric}_conceded"
+                                        f"{lm_ind}_{lm_ind}_{core_metric}_conceded"
                                     )
-                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                    actual_metric_name = f"{lm_opp_ind}_{core_metric}"
                                 else:
-                                    expected_metric_name = (
-                                        f"{opp_ind}_{opp_ind}_{core_metric}_conceded"
-                                    )
-                                    actual_metric_name = f"{ind}_{core_metric}"
+                                    expected_metric_name = f"{lm_opp_ind}_{lm_opp_ind}_{core_metric}_conceded"
+                                    actual_metric_name = f"{lm_ind}_{core_metric}"
 
                         elif metric.split("_")[-1] == "lookback":
                             if core_metric == "ppda":
-                                actual_metric_name = f"{ind}_{core_metric}"
-                                expected_metric_name = f"last_3_{ind}_{core_metric}"
+                                actual_metric_name = f"{lm_ind}_{core_metric}"
+                                expected_metric_name = (
+                                    f"last_{self.lookback}_{lm_ind}_{core_metric}"
+                                )
                             else:
                                 if metric.split("_")[-2] == "conceded":
-                                    expected_metric_name = (
-                                        f"last_3_{ind}_{core_metric}_conceded"
-                                    )
-                                    actual_metric_name = f"{opp_ind}_{core_metric}"
+                                    expected_metric_name = f"last_{self.lookback}_{lm_ind}_{core_metric}_conceded"
+                                    actual_metric_name = f"{lm_opp_ind}_{core_metric}"
                                 else:
-                                    expected_metric_name = (
-                                        f"last_3_{opp_ind}_{core_metric}_conceded"
+                                    expected_metric_name = f"last_{self.lookback}_{lm_opp_ind}_{core_metric}_conceded"
+                                    actual_metric_name = f"{lm_ind}_{core_metric}"
+
+                        elif metric.split("_")[1] == "gen":
+                            # opp_team = row[f"{opp_ind}_team"]
+
+                            if metric.split("_")[-1] == "venue":
+                                prev_ven_matches = prev_matches[
+                                    prev_matches[f"{ind}_team"] == team
+                                ].iloc[-1]
+                                old_elo = prev_ven_matches[f"{ind}_{metric}"]
+
+                                # opp_team = prev_ven_matches[f"{opp_ind}_team"]
+
+                                # opp_lm = (
+                                #     feats[(feats[f"{opp_ind}_team"] == opp_team)]
+                                #     .loc[:i]
+                                #     .iloc[:-1]
+                                #     .iloc[-1]
+                                # )
+                                opp_old_elo = prev_ven_matches[f"{opp_ind}_{metric}"]
+
+                                actual = (
+                                    1
+                                    if (
+                                        prev_ven_matches["home_team"] == team
+                                        and prev_ven_matches.target == 1
                                     )
-                                    actual_metric_name = f"{ind}_{core_metric}"
+                                    else (
+                                        0
+                                        if (
+                                            prev_ven_matches[f"away_team"] == team
+                                            and prev_ven_matches.target == 1
+                                        )
+                                        else 0.5
+                                    )
+                                )
+
+                            else:
+
+                                old_elo = last_match[f"{lm_ind}_{metric}"]
+                                opp_old_elo = last_match[f"{lm_opp_ind}_{metric}"]
+
+                                actual = (
+                                    1
+                                    if (
+                                        last_match["home_team"] == team
+                                        and last_match.target == 1
+                                    )
+                                    else (
+                                        0
+                                        if (
+                                            last_match[f"away_team"] == team
+                                            and last_match.target == 1
+                                        )
+                                        else 0.5
+                                    )
+                                )
+
+                            # home field advantage
+                            if ind == "home":
+                                old_elo += 50
+                            else:
+                                opp_old_elo += 50
+
+                            expected = 1 / (1 + 10 ** ((opp_old_elo - old_elo) / 400))
+
+                            feats.at[i, f"{ind}_{metric}"] = old_elo + (
+                                k_rate * (actual - expected)
+                            )
+                            continue
 
                         # Retrieve the expected and actual values
-                        expected = row[expected_metric_name]
-                        actual = row[actual_metric_name]
-
-                        # # Check if expected or actual is NaN, which can occur if data is missing
-                        # if pd.isna(expected) or pd.isna(actual):
-                        #     feats.at[i, f"{ind}_{metric}"] = (
-                        #         old_elo  # Keep the old Elo rating unchanged
-                        #     )
-                        #     continueg
+                        expected = last_match[expected_metric_name]
+                        actual = last_match[actual_metric_name]
 
                         # Update the Elo rating based on the actual vs expected values
                         feats.at[i, f"{ind}_{metric}"] = old_elo + (
@@ -219,11 +401,18 @@ class TeamFeatures:
                 (feats["home_team"] == team) | (feats["away_team"] == team)
             ]
 
+        # adding lookback marker
+        feats["lookback"] = 0
+
         for i, row in tqdm(feats.iterrows(), total=feats.shape[0]):
             for ind in ["home", "away"]:
                 team = row[f"{ind}_team"]
                 team_games = team_games_cache[team].loc[:i].iloc[:-1]
                 games_played = len(team_games)
+
+                # if in initial period, have lookback = 1
+                if games_played < self.lookback:
+                    feats.at[i, "lookback"] = 1
 
                 if games_played <= 1:
                     continue
@@ -238,6 +427,9 @@ class TeamFeatures:
                     if metric.split("_")[0] == ind:
                         # Handle home/away specific metrics
                         ven_games = team_games[team_games[f"{ind}_team"] == team]
+
+                        if len(ven_games) < 1:
+                            continue
                         feats.at[i, f"{ind}_{metric}"] = (
                             self._calculate_team_performance(ven_games, metric, ind)
                         )
@@ -270,7 +462,7 @@ class TeamFeatures:
             left_on="game",
             how="inner",
         )
-        return feats
+        return feats.drop(cols_to_drop, axis=1)
 
     def _get_min_allocation(self, feats):
         lineups = self.season.player_stats
@@ -338,13 +530,15 @@ class TeamFeatures:
 
     def _calculate_team_performance(self, ven_games, metric, ind):
         if metric.endswith("conceded"):
+
             indicator = "away" if ind == "home" else "home"
             metric_name = "_".join(metric.split("_")[1:-1])
             metric_perf = ven_games[f"{indicator}_{metric_name}"]
+
         else:
             metric_perf = ven_games[f'{ind}_{metric.split("_", 1)[1]}']
 
-        return statistics.mean(metric_perf) if len(metric_perf) > 0 else 0
+        return statistics.mean(metric_perf)
 
     def _calculate_last_performances(self, lookback_matches, metric, row, ind):
         metric_perf = []
@@ -361,7 +555,7 @@ class TeamFeatures:
                 )
                 metric_perf.append(match_row[f"{indicator}_{metric}"])
 
-        return statistics.mean(metric_perf) if len(metric_perf) > 0 else 0
+        return statistics.mean(metric_perf)
 
     def _get_vaep_shots_target(self, feats):
         match_events = self.season.events.groupby("fixture")
@@ -373,8 +567,18 @@ class TeamFeatures:
         targets = []
 
         for i, row in tqdm(feats.iterrows(), total=feats.shape[0]):
+            games_to_drop = []
             fixture = row.game
-            events = match_events.get_group(fixture)
+            try:
+                events = match_events.get_group(fixture)
+            except:
+                games_to_drop.append(i)
+                home_vaep.append(0)
+                away_vaep.append(0)
+                home_shots.append(0)
+                away_shots.append(0)
+                targets.append(0)
+                continue
             events = events.sort_values(["period_id", "time_seconds"], ascending=True)
             events["ha"] = np.where(
                 events.team_id == events.home_team_id, "home", "away"
@@ -390,7 +594,7 @@ class TeamFeatures:
             home_shots.append(shots_count.get("home", 0))
             away_shots.append(shots_count.get("away", 0))
             targets.append(
-                1 if row.home_points == 3 else (0 if row.home_points == 1 else -1)
+                1 if row.home_points == 3 else (0 if row.home_points == 1 else 2)
             )
 
         feats["home_vaep"] = home_vaep
@@ -399,23 +603,54 @@ class TeamFeatures:
         feats["away_shots"] = away_shots
         feats["target"] = targets
 
-        return feats
-    
+        return feats.drop(games_to_drop).reset_index(drop=True)
+
     def _get_average_rating(self, feats):
         player_ratings = self.season.player_ratings
+        # print(player_ratings.columns)
         player_ratings["h_a"] = player_ratings.apply(
-                    lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
-                )
-        ratings_groups = player_ratings.groupby('game')
+            lambda x: "home" if x.team == x.game[11:].split("-")[0] else "away", axis=1
+        )
+        ratings_groups = player_ratings.groupby("game")
 
         for i, row in feats.iterrows():
             ratings = ratings_groups.get_group(row.game)
-            home_ratings = ratings[ratings['h_a'] == 'home'].rating.mean()
-            away_ratings = ratings[ratings['h_a'] == 'away'].rating.mean()
-            feats.at[i, 'home_player_rating'] = home_ratings
-            feats.at[i, 'away_player_rating'] = away_ratings
+            home_ratings = ratings[ratings["h_a"] == "home"].rating.mean()
+            away_ratings = ratings[ratings["h_a"] == "away"].rating.mean()
+            feats.at[i, "home_player_rating"] = home_ratings
+            feats.at[i, "away_player_rating"] = away_ratings
 
         return feats
+    
+    def _calculate_lineup_strength(self, features, player_ratings):
+        new_ratings = self._get_player_ratings(player_ratings)
+
+        if 'DEF' not in new_ratings.position.unique():
+            new_ratings = _fix_positions(new_ratings)
+
+        player_groups = player_ratings.groupby('game')
+
+        for i, row in features.iterrows():
+            match_players = player_groups.get_group(row.game)
+            starting11 = match_players[match_players['position'] != 'SUB']
+
+            home_team = starting11[starting11['team'] == row.home_team]
+            home_team_lookback = row.last_6_home_player_rating
+
+            away_team = starting11[starting11['team'] == row.away_team]
+            away_team_lookback = row.last_6_away_player_rating
+
+            if home_team_lookback == 0 or away_team_lookback == 0:
+                home_lineup_rating = 0 
+                away_lineup_rating = 0
+            else:
+                home_lineup_rating = home_team.lookback_rating.mean() / home_team_lookback  
+                away_lineup_rating = away_team.lookback_rating.mean() / away_team_lookback
+
+            features.at[i, 'home_lineup'] = home_lineup_rating
+            features.at[i, 'away_lineup'] = away_lineup_rating
+
+        return features
 
     def _get_season_points(self, schedule):
         schedule = schedule.copy()
@@ -448,6 +683,38 @@ class TeamFeatures:
         scaler = MinMaxScaler()
         group[self.met_col_list] = scaler.fit_transform(group[self.met_col_list])
         return group
+            
+    def _get_player_ratings(self, features):
+        features.dropna(subset=["player"], inplace=True)
+        features.fillna(0, inplace=True)
+
+        match_fixtures = features.groupby("game")
+        player_performances = features.groupby("player")
+
+        for fixture, data in tqdm(match_fixtures):
+            sched_fix = self.season.schedule[
+                self.season.schedule["game"] == fixture
+            ].iloc[0]
+
+            for i, row in data.iterrows():
+
+                player_perf = player_performances.get_group(row.player)
+                position = player_perf.index.get_loc(i)
+                lookback_table = player_perf.iloc[max(0, position - 6) : position]
+
+                # assume that a player who hasn't made an appearance yet will perform below average
+                # or esssentially 5.75 
+                if len(lookback_table) < 1:
+                    lookback_rating = 5.75
+                else:
+                    lookback_rating = lookback_table.rating.mean()
+
+                # features.at[i, "season_rating"] = season_rating
+                features.at[i, "lookback_rating"] = lookback_rating
+                features.at[i, "lookback_len"] = len(lookback_table)
+
+        return features
+
 
 
 cols_to_drop = [
@@ -465,7 +732,6 @@ cols_to_drop = [
     "home_np_xg_difference",
     "away_points",
     "home_points",
-    "league",
     "league_id",
     "season_id",
     "game_id",
@@ -482,7 +748,7 @@ cols_to_drop = [
     "home_min_allocation",
     "away_min_allocation",
     "home_player_rating",
-    "away_player_rating"
+    "away_player_rating",
 ]
 
 elo_metrics = [
@@ -496,6 +762,7 @@ elo_metrics = [
     "elo_vaep_conceded_lookback",
     "elo_ppda_lookback",
     "elo_ppda_season",
+    "elo_gen",
 ]
 
 metrics = [
@@ -526,53 +793,27 @@ metrics = [
     "min_allocation",
     "player_rating",
     "home_player_rating",
-    "away_player_rating"
+    "away_player_rating",
 ]
 
-config_cols = ["season", "game", "date", "home_team", "away_team", "target", "matchday"]
-last_3 = [
-    f"last_3_{x}_{y}"
-    for x in ["home", "away"]
-    for y in [
-        "points",
-        "np_xg",
-        "np_xg_conceded",
-        "vaep",
-        "vaep_conceded",
-        "ppda",
-        "min_allocation",
-    ]
+config_cols = [
+    "league",
+    "season",
+    "game",
+    "date",
+    "home_team",
+    "away_team",
+    "target",
+    "matchday",
+    "lookback",
 ]
-momentum = [
-    f"last_3_{x}_{y}_{z}"
-    for x in ["home", "away"]
-    for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded"]
-    for z in ["slope", "predicted"]
-]
-venue = [
-    f"{x}_{x}_{y}"
-    for x in ["home", "away"]
-    for y in ["np_xg", "np_xg_conceded", "vaep", "vaep_conceded", "ppda"]
-]
-general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
 
-last_3_diff_cols = [
-    f"last_3_diff_{metric}"
-    for metric in [
-        "_".join(x.split("_")[3:]) for x in last_3 if x.split("_")[2] == "home"
-    ]
-]
-momentum_diff_cols = [
-    f"last_3_diff_{metric}"
-    for metric in [
-        "_".join(x.split("_")[3:]) for x in momentum if x.split("_")[2] == "home"
-    ]
-]
-venue_diff_cols = [
-    f"venue_diff_{x}"
-    for x in ["_".join(x.split("_")[2:]) for x in venue if x.split("_")[0] == "home"]
-]
-general_diff_cols = [
-    f"gen_diff_{x}"
-    for x in ["_".join(x.split("_")[1:]) for x in general if x.split("_")[0] == "home"]
-]
+
+# venue_diff_cols = [
+#     f"venue_diff_{x}"
+#     for x in ["_".join(x.split("_")[2:]) for x in venue if x.split("_")[0] == "home"]
+# ]
+# general_diff_cols = [
+#     f"gen_diff_{x}"
+#     for x in ["_".join(x.split("_")[1:]) for x in general if x.split("_")[0] == "home"]
+# ]

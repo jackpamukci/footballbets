@@ -11,3 +11,4 @@ tqdm
 unidecode
 fuzzywuzzy
 torch
+venn-abers
