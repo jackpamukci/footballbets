@@ -5,6 +5,7 @@ from tqdm import tqdm
 import statistics
 from datetime import datetime
 from sklearn.preprocessing import MinMaxScaler
+from data.utils import _fix_positions
 
 
 class TeamFeatures:
@@ -36,9 +37,11 @@ class TeamFeatures:
         self.metrics_calc = False
 
         features_df = self.season.team_stats.copy()
+        player_ratings = self.season.player_ratings.copy()
+        
         features_df = self._process_features(features_df)
-
-        self.features = features_df
+        self.features = self._calculate_lineup_strength(features_df, player_ratings)
+        # self.features = features_df
 
     def _process_features(self, features_df):
 
@@ -618,6 +621,36 @@ class TeamFeatures:
             feats.at[i, "away_player_rating"] = away_ratings
 
         return feats
+    
+    def _calculate_lineup_strength(self, features, player_ratings):
+        new_ratings = self._get_player_ratings(player_ratings)
+
+        if 'DEF' not in new_ratings.position.unique():
+            new_ratings = _fix_positions(new_ratings)
+
+        player_groups = player_ratings.groupby('game')
+
+        for i, row in features.iterrows():
+            match_players = player_groups.get_group(row.game)
+            starting11 = match_players[match_players['position'] != 'SUB']
+
+            home_team = starting11[starting11['team'] == row.home_team]
+            home_team_lookback = row.last_6_home_player_rating
+
+            away_team = starting11[starting11['team'] == row.away_team]
+            away_team_lookback = row.last_6_away_player_rating
+
+            if home_team_lookback == 0 or away_team_lookback == 0:
+                home_lineup_rating = 0 
+                away_lineup_rating = 0
+            else:
+                home_lineup_rating = home_team.lookback_rating.mean() / home_team_lookback  
+                away_lineup_rating = away_team.lookback_rating.mean() / away_team_lookback
+
+            features.at[i, 'home_lineup'] = home_lineup_rating
+            features.at[i, 'away_lineup'] = away_lineup_rating
+
+        return features
 
     def _get_season_points(self, schedule):
         schedule = schedule.copy()
@@ -650,6 +683,38 @@ class TeamFeatures:
         scaler = MinMaxScaler()
         group[self.met_col_list] = scaler.fit_transform(group[self.met_col_list])
         return group
+            
+    def _get_player_ratings(self, features):
+        features.dropna(subset=["player"], inplace=True)
+        features.fillna(0, inplace=True)
+
+        match_fixtures = features.groupby("game")
+        player_performances = features.groupby("player")
+
+        for fixture, data in tqdm(match_fixtures):
+            sched_fix = self.season.schedule[
+                self.season.schedule["game"] == fixture
+            ].iloc[0]
+
+            for i, row in data.iterrows():
+
+                player_perf = player_performances.get_group(row.player)
+                position = player_perf.index.get_loc(i)
+                lookback_table = player_perf.iloc[max(0, position - 6) : position]
+
+                # assume that a player who hasn't made an appearance yet will perform below average
+                # or esssentially 5.75 
+                if len(lookback_table) < 1:
+                    lookback_rating = 5.75
+                else:
+                    lookback_rating = lookback_table.rating.mean()
+
+                # features.at[i, "season_rating"] = season_rating
+                features.at[i, "lookback_rating"] = lookback_rating
+                features.at[i, "lookback_len"] = len(lookback_table)
+
+        return features
+
 
 
 cols_to_drop = [

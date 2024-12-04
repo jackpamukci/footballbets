@@ -236,6 +236,27 @@ def _get_s3_agent(env_path):
     except Exception as e:
         raise ConnectionError("Connection to AWS Failed. Check Credentials.") from e
 
+def _fix_positions(features_df):
+    position_rep = {
+        "DEF": ["DC", "DR", "DL",  "DMC", "DMR", "DML"],
+        "MID": ["AMC", "MC", "MR", "ML"],
+        "FOR": ["FW", "FWR", "FWL", "AMR", "AML"],
+        "GK": ["GK"],
+        "SUB": ["Sub"],
+    }
+
+    pos = {}
+
+    for position, to_replace_list in position_rep.items():
+        for to_replace in to_replace_list:
+            pos[to_replace] = position
+
+    features_df.position = features_df.position.apply(
+        lambda x: x.replace(x, pos[x])
+    )
+
+    return features_df
+
 
 def _normalize_features(
     feats,
