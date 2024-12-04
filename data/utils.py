@@ -423,11 +423,17 @@ def _normalize_features(
         met_col_list = diff_data.columns
         features = pd.concat([config["matchday"], diff_data], axis=1)
 
+        # MANDATORY NORMALIZING OF ELO
+        features = (
+                features.groupby("matchday", group_keys=False)
+                .apply(lambda group: _scale_group(group, elo_diff.columns, use_diff))
+            )
+
         if normalize:
 
             features = (
                 features.groupby("matchday", group_keys=False)
-                .apply(lambda group: _scale_group(group, met_col_list))
+                .apply(lambda group: _scale_group(group, met_col_list, use_diff))
                 .drop("matchday", axis=1)
             )
 
@@ -435,12 +441,18 @@ def _normalize_features(
 
     met_col_list = [item for x in feat_group for item in cols_dict[x]]
 
+    # MANDATORY NORMALIZING OF ELO
+    features = (
+            features.groupby("matchday", group_keys=False)
+            .apply(lambda group: _scale_group(group, elo, use_diff))
+        )
+
     if normalize:
         features = feats[met_col_list + ["matchday"]]
 
         features = (
             features.groupby("matchday", group_keys=False)
-            .apply(lambda group: _scale_group(group, met_col_list))
+            .apply(lambda group: _scale_group(group, met_col_list, use_diff))
             .drop("matchday", axis=1)
         )
 
@@ -449,8 +461,9 @@ def _normalize_features(
     return pd.concat([config, feats[met_col_list]], axis=1)
 
 
-def _scale_group(group, met_col_list):
-    scaler = MinMaxScaler(feature_range=(-1, 1))
+def _scale_group(group, met_col_list, diff):
+
+    scaler = MinMaxScaler(feature_range=(-1, 1)) if diff else MinMaxScaler()
 
     group[met_col_list] = scaler.fit_transform(group[met_col_list])
     return group
