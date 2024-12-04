@@ -60,11 +60,16 @@ class PlayerDataset(Dataset):
 
             # max_rows = max(home_feats.shape[0], away_feats.shape[0])
             # max_cols = max(home_feats.shape[1], away_feats.shape[1])
+            if 14 - home_feats.shape[0] < 0 or 31 - home_feats.shape[1] < 0:
+                print(game)
+                print(14 - home_feats.shape[0])
+                print(31 - home_feats.shape[1])
+
             home_feats_padded = np.pad(
                 home_feats,
                 (
                     (0, 14 - home_feats.shape[0]),
-                    (0, 30 - home_feats.shape[1]),
+                    (0, 31 - home_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
@@ -73,7 +78,7 @@ class PlayerDataset(Dataset):
                 away_feats,
                 (
                     (0, 14 - away_feats.shape[0]),
-                    (0, 30 - away_feats.shape[1]),
+                    (0, 31 - away_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
@@ -205,11 +210,17 @@ class HybridDataset(Dataset):
 
             # max_rows = max(home_feats.shape[0], away_feats.shape[0])
             # max_cols = max(home_feats.shape[1], away_feats.shape[1])
+
+            # if 14 - home_feats.shape[0] < 0 or 30 - home_feats.shape[1] < 0:
+            print(game)
+            print(14 - home_feats.shape[0])
+            print(31 - home_feats.shape[1])
+            
             home_feats_padded = np.pad(
                 home_feats,
                 (
                     (0, 14 - home_feats.shape[0]),
-                    (0, 30 - home_feats.shape[1]),
+                    (0, 31 - home_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
@@ -218,7 +229,7 @@ class HybridDataset(Dataset):
                 away_feats,
                 (
                     (0, 14 - away_feats.shape[0]),
-                    (0, 30 - away_feats.shape[1]),
+                    (0, 31 - away_feats.shape[1]),
                 ),
                 mode="constant",
                 constant_values=0,
