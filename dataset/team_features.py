@@ -37,6 +37,10 @@ class TeamFeatures:
         self.metrics_calc = False
 
         features_df = self.season.team_stats.copy()
+
+        if 'DEF' not in self.season.player_ratings.position.unique():
+            self.season.player_ratings = _fix_positions(self.season.player_ratings)
+        
         player_ratings = self.season.player_ratings.copy()
         
         features_df = self._process_features(features_df)
@@ -58,8 +62,8 @@ class TeamFeatures:
         if self.metrics_calc:
             features_df = self._calculate_elo(features_df, self.k_rate)
 
-        features_df = self._get_proper_cols(features_df)
-        features_df = self._normalize_features(features_df)
+        # features_df = self._get_proper_cols(features_df)
+        # features_df = self._normalize_features(features_df)
 
         return features_df
 
@@ -440,6 +444,9 @@ class TeamFeatures:
                             value = self._calculate_slope_metrics(
                                 lookback_matches, metric, row, ind
                             )
+                        # TODO: add _get_player_ratings which populates multiple columns with lineup ratings
+                        # elif metric == 'player_rating':
+                        #     self._get_player_ratings(lookback_matches, row, ind)
                         else:
                             value = self._calculate_last_performances(
                                 lookback_matches, metric, row, ind
@@ -557,6 +564,15 @@ class TeamFeatures:
 
         return statistics.mean(metric_perf)
 
+    # TODO: define calculate player line up method to get not only lookback player rating but also lineup strengths
+    # def _calculate_player_lineup(self, lookback_matches, row, ind):
+    #     indicator = (
+    #                 "home" if row[f"{ind}_team"] == match_row.home_team else "away"
+    #             )
+    #     metric_perf.append(match_row[f"{indicator}_{metric}"])
+
+    #     return
+
     def _get_vaep_shots_target(self, feats):
         match_events = self.season.events.groupby("fixture")
 
@@ -615,10 +631,16 @@ class TeamFeatures:
 
         for i, row in feats.iterrows():
             ratings = ratings_groups.get_group(row.game)
-            home_ratings = ratings[ratings["h_a"] == "home"].rating.mean()
-            away_ratings = ratings[ratings["h_a"] == "away"].rating.mean()
-            feats.at[i, "home_player_rating"] = home_ratings
-            feats.at[i, "away_player_rating"] = away_ratings
+
+            for ind in ['home', 'away']:
+                team_ratings = ratings[ratings["h_a"] == ind]
+
+                feats.at[i, f"{ind}_player_rating"] = team_ratings.rating.mean()
+
+                feats.at[i, f"{ind}_gk_player_rating"] = team_ratings[team_ratings['position'] == 'GK'].rating.mean()
+                feats.at[i, f"{ind}_def_player_rating"] = team_ratings[team_ratings['position'] == 'DEF'].rating.mean()
+                feats.at[i, f"{ind}_mid_player_rating"] = team_ratings[team_ratings['position'] == 'MID'].rating.mean()
+                feats.at[i, f"{ind}_for_player_rating"] = team_ratings[team_ratings['position'] == 'FOR'].rating.mean()
 
         return feats
     

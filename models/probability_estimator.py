@@ -134,7 +134,6 @@ class ProbabilityEstimator:
 
         if self.model_type == "class":
 
-            # TODO: errors on wrong columns
             data_to_predict = self.features[self.selected_features]
             # print(self.feature_selection)
             # print(set(data_to_predict.columns).difference(self.selected_features))
@@ -297,13 +296,6 @@ class ProbabilityEstimator:
             self.lookback,
             ["last_cols", "venue", "general", "momentum", "elo"],
         )
-        master_df = _normalize_features(
-            master_df,
-            self.use_diff,
-            self.normalize,
-            self.lookback,
-            ["last_cols", "venue", "general", "elo"],
-        )
 
         self.training_data = master_df[
             (~master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
@@ -355,12 +347,21 @@ class ProbabilityEstimator:
             self.features = PlayerDataset(test_feats, test_schedule)
 
     def _get_odds(self):
-        key = f"season_pickles/masterodds.csv" if self.version == 1 else f"season_pickles2/masterodds.csv"
+        key = f"season_pickles/masterodds.csv" if self.version == 1 else f"season_pickles2/master_odds.csv"
         oddscsv = self.s3.get_object(
             Bucket="footballbets",
             Key=key,
         )
         master_odds = pd.read_csv(oddscsv["Body"], index_col=0)
+
+        teamname_replacements = {'Valladolid':'Real Valladolid',
+                                'Espanol':'Espanyol',
+                                'Hertha': 'Hertha Berlin'
+                                }
+
+        master_odds.home_team = master_odds.home_team.replace(teamname_replacements)
+        master_odds.away_team = master_odds.away_team.replace(teamname_replacements)
+        master_odds.game = master_odds.apply(lambda x: f'{x.date[:10]} {x.home_team}-{x.away_team}', axis=1)
 
         self.odds = master_odds
 
