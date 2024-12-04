@@ -26,11 +26,12 @@ class ProbabilityEstimator:
         self,
         bookie_odds: pd.DataFrame = None,
         testing_data: pd.DataFrame = None,
+        betting_seasons: list = [2324],
+        version: int = 1,
         use_diff: bool = False,
         normalize: bool = False,
-        lookback: int = 4,
+        lookback: int = 6,
         bookie: str = "pinnacle",
-        best_set: bool = False,
         markets_to_play: list = ["1x2"],
         model_type: str = "class",
         model: Union[LogisticRegression, PlayerCNN] = None,
@@ -46,6 +47,8 @@ class ProbabilityEstimator:
         self.training_data = training_data
         self.env_path = env_path
         self.s3 = utils._get_s3_agent(self.env_path)
+        self.betting_seasons = betting_seasons
+        self.version = version
 
         if all(market not in ["1x2", "OU", "BTTS"] for market in self.markets):
             raise ValueError("Only available markets are '1x2', 'OU', and 'BTTS'")
@@ -53,7 +56,6 @@ class ProbabilityEstimator:
         if self.model_type not in ["class", "zip", "hybrid"]:
             raise ValueError("Only available models are 'class', 'zip', and 'hybrid'")
 
-        self.best_set = best_set
         self.use_diff = use_diff
         self.normalize = normalize
         self.lookback = lookback
@@ -90,8 +92,8 @@ class ProbabilityEstimator:
         bookie_cols = {
             "pinnacle": ["PSCD", "PSCH", "PSCA"],
             "b365": ["B365D", "B365H", "B365A"],
-            "avg": ["AvgCD", "AvgCH", "AvgCA"],
-            "max": ["MaxCD", "MaxCH", "MaxCA"],
+            "avg": ["AvgD", "AvgH", "AvgA"],
+            "max": ["MaxD", "MaxH", "MaxA"],
         }
 
         self.bookie = bookie
@@ -124,9 +126,7 @@ class ProbabilityEstimator:
 
         if self.model_type == "class":
             data_to_predict = (
-                self.features.drop(self.config_cols, axis=1).iloc[:, 4:]
-                if self.best_set
-                else self.features.drop(
+                self.features.drop(
                     self.config_cols + ["league", "lookback"], axis=1
                 )
             )
@@ -270,11 +270,7 @@ class ProbabilityEstimator:
 
     def _get_team_features(self):
 
-        key = (
-            "season_pickles/team_features_diff.csv"
-            if self.best_set
-            else f"season_pickles/team_feats_{self.lookback}.csv"
-        )
+        key = f"season_pickles/team_feats_{self.lookback}.csv" if self.version == 1 else f"season_pickles2/team_feats_{self.lookback}.csv"
 
         mastercsv = self.s3.get_object(
             Bucket="footballbets",
@@ -284,24 +280,23 @@ class ProbabilityEstimator:
         master_df = pd.read_csv(mastercsv["Body"])
         master_df.matchday.ffill(inplace=True)
 
-        if not self.best_set:
-            master_df = _normalize_features(
-                master_df,
-                self.use_diff,
-                self.normalize,
-                self.lookback,
-                ["last_cols", "venue", "general", "elo"],
-            )
+        master_df = _normalize_features(
+            master_df,
+            self.use_diff,
+            self.normalize,
+            self.lookback,
+            ["last_cols", "venue", "general", "elo"],
+        )
 
         # print(master_df.columns)
 
         self.training_data = master_df[
-            (master_df["season"] != 2324) & (master_df["lookback"] != 1)
+            (~master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
         ]
 
         if self.features is None:
             self.features = master_df[
-                (master_df["season"] == 2324) & (master_df["lookback"] != 1)
+                (master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
             ]
 
     def _get_player_features(self):
@@ -345,9 +340,10 @@ class ProbabilityEstimator:
             self.features = PlayerDataset(test_feats, test_schedule)
 
     def _get_odds(self):
+        key = f"season_pickles/masterodds.csv" if self.version == 1 else f"season_pickles2/masterodds.csv"
         oddscsv = self.s3.get_object(
             Bucket="footballbets",
-            Key=f"season_pickles/masterodds.csv",
+            Key=key,
         )
         master_odds = pd.read_csv(oddscsv["Body"], index_col=0)
 
@@ -357,13 +353,7 @@ class ProbabilityEstimator:
         self.model = LogisticRegression(max_iter=10000)
         # self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
 
-        X_train = (
-            self.training_data.drop(self.config_cols, axis=1).iloc[:, 4:]
-            if self.best_set
-            else self.training_data.drop(
-                self.config_cols + ["league", "lookback"], axis=1
-            )
-        )
+        X_train = self.training_data.drop(self.config_cols + ["league", "lookback"], axis=1)
         y_train = self.training_data.target
         self.model.fit(X_train, y_train)
 
