@@ -263,7 +263,7 @@ def _normalize_features(
     use_diff: bool = False,
     normalize: bool = False,
     lookback: int = 4,
-    feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
+    feat_group: list = ["last_cols", "player_ratings", "momentum", "venue", "general", "elo"],
 ):
 
     elo_metrics = [
@@ -303,9 +303,20 @@ def _normalize_features(
             "vaep_conceded",
             "ppda",
             "min_allocation",
-            "player_rating",
         ]
     ]
+
+    player_rat = [
+            f"last_{lookback}_{x}_{y}"
+            for x in ["home", "away"]
+            for y in [
+                "pr_gen",
+                "pr_gk",
+                "pr_def",
+                "pr_mid",
+                "pr_fw"
+            ]
+        ]
 
     momentum = [
         f"last_{lookback}_{x}_{y}_{z}"
@@ -339,6 +350,7 @@ def _normalize_features(
 
     cols_dict = {
         "last_cols": last_cols,
+        "player_ratings":player_rat,
         "momentum": momentum,
         "venue": venue,
         "general": general,
@@ -351,9 +363,22 @@ def _normalize_features(
             feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
             - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
             columns=[
-                f"venue_diff_{x}"
+                f"lookback_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[3:])
+                    for x in last_cols
+                    if x.split("_")[2] == "home"
+                ]
+            ],
+        )
+
+        player_ratings_diff = pd.DataFrame(
+            feats[[x for x in player_rat if x.split("_")[2] == "home"]].values
+            - feats[[x for x in player_rat if x.split("_")[2] == "away"]].values,
+            columns=[
+                f"ratings_diff_{x}"
+                for x in [
+                    "_".join(x.split("_")[3:])
                     for x in last_cols
                     if x.split("_")[2] == "home"
                 ]
@@ -364,9 +389,9 @@ def _normalize_features(
             feats[[x for x in momentum if x.split("_")[2] == "home"]].values
             - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
             columns=[
-                f"venue_diff_{x}"
+                f"momentum_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[3:])
                     for x in momentum
                     if x.split("_")[2] == "home"
                 ]
@@ -392,7 +417,7 @@ def _normalize_features(
             columns=[
                 f"general_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[1:])
                     for x in general
                     if x.split("_")[0] == "home"
                 ]
@@ -412,6 +437,7 @@ def _normalize_features(
 
         diff_dict = {
             "last_cols": last_cols_diff,
+            "player_ratings":player_ratings_diff,
             "momentum": momentum_diff,
             "venue": venue_diff,
             "general": general_diff,
