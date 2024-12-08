@@ -258,11 +258,11 @@ def _fix_positions(features_df):
     return features_df
 
 
-def _normalize_features(
+def _cut_features(
     feats,
     use_diff: bool = False,
-    normalize: bool = False,
     use_dist: bool = False,
+    normalize: bool = False,
     lookback: int = 4,
     feat_group: list = ["last_cols", "player_ratings", "momentum", "venue", "general", "elo"],
 ):
@@ -463,41 +463,41 @@ def _normalize_features(
         features = pd.concat([config["matchday"], diff_data], axis=1)
 
         # MANDATORY NORMALIZING OF ELO
-        features = (
-                features.groupby("matchday", group_keys=False)
-                .apply(lambda group: _scale_group(group, elo_diff.columns, use_diff))
-            )
+        # features = (
+        #         features.groupby("matchday", group_keys=False)
+        #         .apply(lambda group: _scale_group(group, elo_diff.columns, use_diff))
+        #     )
 
-        if normalize:
+        # if normalize:
 
-            features = (
-                features.groupby("matchday", group_keys=False)
-                .apply(lambda group: _scale_group(group, met_col_list, use_diff))
-                .drop("matchday", axis=1)
-            )
+        #     features = (
+        #         features.groupby("matchday", group_keys=False)
+        #         .apply(lambda group: _scale_group(group, met_col_list, use_diff))
+        #         .drop("matchday", axis=1)
+        #     )
 
         
 
-        return pd.concat([config, features], axis=1)
+        return pd.concat([config, diff_data], axis=1)
 
     met_col_list = [item for x in feat_group for item in cols_dict[x]]
 
-    # MANDATORY NORMALIZING OF ELO
-    features = (
-            feats.groupby("matchday", group_keys=False)
-            .apply(lambda group: _scale_group(group, elo, use_diff))
-        )
+    # TODO: assign features variable as feats[config + met_col_list]
+    # features = (
+    #         feats.groupby("matchday", group_keys=False)
+    #         .apply(lambda group: _scale_group(group, elo, use_diff))
+    #     )
 
-    if normalize:
-        features = features[met_col_list + ["matchday"]]
+    # if normalize:
+    #     features = features[met_col_list + ["matchday"]]
 
-        features = (
-            features.groupby("matchday", group_keys=False)
-            .apply(lambda group: _scale_group(group, met_col_list, use_diff))
-            .drop("matchday", axis=1)
-        )
+    #     features = (
+    #         features.groupby("matchday", group_keys=False)
+    #         .apply(lambda group: _scale_group(group, met_col_list, use_diff))
+    #         .drop("matchday", axis=1)
+    #     )
 
-        return pd.concat([config, features], axis=1)
+    #     return pd.concat([config, features], axis=1)
 
     return pd.concat([config, feats[met_col_list]], axis=1)
 

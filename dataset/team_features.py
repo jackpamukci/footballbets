@@ -615,10 +615,14 @@ class TeamFeatures:
         mid_max = []
         fw_max = []
 
+        # print('match to predict: ', row.game)
+
         for i, lb_row in lookback_matches.iterrows():
             indicator = (
                 "home" if row[f"{ind}_team"] == lb_row.home_team else "away"
             )
+
+            # print(f'lookback {i}: ', lb_row.game)
 
             gen_max.append(lb_row[f"{indicator}_player_rating"])
             gk_max.append(lb_row[f"{indicator}_gk_player_rating"])
@@ -626,29 +630,11 @@ class TeamFeatures:
             mid_max.append(lb_row[f"{indicator}_mid_player_rating"])
             fw_max.append(lb_row[f"{indicator}_for_player_rating"])
 
-
         return [team_players.rating.mean() / max(gen_max),
         team_players[team_players['position'] == 'GK'].rating.mean() / max(gk_max),
         team_players[team_players['position'] == 'DEF'].rating.mean() / max(def_max),
         team_players[team_players['position'] == 'MID'].rating.mean() / max(mid_max),
         team_players[team_players['position'] == 'FOR'].rating.mean() / max(fw_max)]
-
-
-        # # if home_team_lookback == 0 or away_team_lookback == 0:
-        # #     home_lineup_rating = 0 
-        # #     away_lineup_rating = 0
-        # # else:
-        # #     home_lineup_rating = home_team.lookback_rating.mean() / home_team_lookback  
-        # #     away_lineup_rating = away_team.lookback_rating.mean() / away_team_lookback
-
-        # features.at[i, 'home_lineup'] = home_lineup_rating
-        # features.at[i, 'away_lineup'] = away_lineup_rating
-        # # indicator = (
-        # #             "home" if row[f"{ind}_team"] == match_row.home_team else "away"
-        # #         )
-        # # metric_perf.append(match_row[f"{indicator}_{metric}"])
-
-        # return [0, 0, 0, 0, 0]
 
     def _get_vaep_shots_target(self, feats):
         match_events = self.season.events.groupby("fixture")
@@ -761,9 +747,6 @@ class TeamFeatures:
         player_performances = features.groupby("player")
 
         for fixture, data in tqdm(match_fixtures):
-            sched_fix = self.season.schedule[
-                self.season.schedule["game"] == fixture
-            ].iloc[0]
 
             for i, row in data.iterrows():
 
