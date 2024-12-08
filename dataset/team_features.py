@@ -121,7 +121,13 @@ class TeamFeatures:
         ]
 
         elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
-        config = feats[config_cols]
+
+
+        last_config = [x for x in config_cols]
+        if self.use_dist:
+            last_config = [x for x in config_cols] + ['distance']
+
+        config = feats[last_config]
 
         cols_dict = {
             "last_cols": last_cols,

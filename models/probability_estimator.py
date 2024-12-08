@@ -68,21 +68,21 @@ class ProbabilityEstimator:
         self.normalize = normalize
         self.lookback = lookback
 
-        self.team_feature_cols = [
-            "venue_diff_home_points",
-            "venue_diff_np_xg_conceded",
-            "venue_diff_vaep_conceded",
-            "venue_diff_ppda",
-            "general_diff_",
-            "general_diff_points",
-            "elo_diff_np_xg_season",
-            "elo_diff_np_xg_lookback",
-            "elo_diff_np_xg_conceded_lookback",
-            "elo_diff_vaep_season",
-            "elo_diff_vaep_lookback",
-            "elo_diff_ppda_lookback",
-            "elo_diff_gen",
-        ]
+        # self.team_feature_cols = [
+        #     "venue_diff_home_points",
+        #     "venue_diff_np_xg_conceded",
+        #     "venue_diff_vaep_conceded",
+        #     "venue_diff_ppda",
+        #     "general_diff_",
+        #     "general_diff_points",
+        #     "elo_diff_np_xg_season",
+        #     "elo_diff_np_xg_lookback",
+        #     "elo_diff_np_xg_conceded_lookback",
+        #     "elo_diff_vaep_season",
+        #     "elo_diff_vaep_lookback",
+        #     "elo_diff_ppda_lookback",
+        #     "elo_diff_gen",
+        # ]
 
         self.config_cols = [
             "season",
@@ -135,8 +135,6 @@ class ProbabilityEstimator:
         if self.model_type == "class":
 
             data_to_predict = self.features[self.selected_features]
-            # print(self.feature_selection)
-            # print(set(data_to_predict.columns).difference(self.selected_features))
 
             data_to_predict = (
                 self.features.drop(
@@ -174,7 +172,6 @@ class ProbabilityEstimator:
 
             test_loader = DataLoader(self.features, batch_size=32, shuffle=True)
 
-            # print('getting preds')
             with torch.no_grad():
                 for test_batch in test_loader:
                     test_inputs, test_labels, match_config = test_batch
@@ -279,7 +276,7 @@ class ProbabilityEstimator:
 
     def _get_team_features(self):
 
-        key = f"season_pickles/team_feats_{self.lookback}.csv" if self.version == 1 else f"season_pickles2/team_feats_{self.lookback}.csv"
+        key = f"season_pickles/team_feats_{self.lookback}.csv" if self.version == 1 else f"season_pickles{self.version}/team_feats_{self.lookback}.csv"
 
         mastercsv = self.s3.get_object(
             Bucket="footballbets",
@@ -289,12 +286,16 @@ class ProbabilityEstimator:
         master_df = pd.read_csv(mastercsv["Body"])
         master_df.matchday.ffill(inplace=True)
 
+        feat_group = ["last_cols", "venue", "general", "momentum", "elo"] if self.version != 3 else ["last_cols", "player_ratings", "venue", "general", "momentum", "elo"]
+        print(feat_group)
+
         master_df = _normalize_features(
             master_df,
             self.use_diff,
             self.normalize,
+            True if self.version == 3 else False,
             self.lookback,
-            ["last_cols", "venue", "general", "momentum", "elo"],
+            feat_group,
         )
 
         self.training_data = master_df[
@@ -366,8 +367,6 @@ class ProbabilityEstimator:
         self.odds = master_odds
 
     def _train_team_model(self):
-        self.model = LogisticRegression(max_iter=10000)
-        # self.model = VennAbersCalibrator(clf, inductive=False, n_splits=5)
 
         X_train = self.training_data.drop(self.config_cols + ["league", "lookback"], axis=1)
         y_train = self.training_data.target
@@ -383,24 +382,29 @@ class ProbabilityEstimator:
 
         elif self.feature_selection == "forward":
 
-            self.selected_features = ['venue_diff_home_points', 'venue_diff_home_np_xg',
-            'venue_diff_home_np_xg_conceded', 'venue_diff_home_vaep',
-            'venue_diff_home_vaep_conceded', 'venue_diff_home_min_allocation',
-            'venue_diff_np_xg', 'venue_diff_np_xg_conceded', 'general_diff_points',
-            'venue_diff_home_np_xg_slope', 'venue_diff_home_np_xg_predicted',
-            'venue_diff_home_np_xg_conceded_slope',
-            'venue_diff_home_np_xg_conceded_predicted',
-            'venue_diff_home_vaep_predicted', 'venue_diff_home_vaep_conceded_slope',
-            'elo_diff_np_xg_season', 'elo_diff_vaep_conceded_season']
+            lgr = LogisticRegression(max_iter=1000,
+                                    multi_class='multinomial', 
+                                    solver='lbfgs')
+            sfs = SequentialFeatureSelector(estimator=lgr,
+                                                    n_features_to_select='auto',  
+                                                    direction='forward',     
+                                                    scoring='neg_log_loss',   
+                                                    cv=5)
+            sfs.fit(X_train, y_train)
 
-            X_train_selected = X_train[self.selected_features]
+            X_train_selected = sfs.transform(X_train)
+            self.selected_features = X_train_selected.columns
 
-            self.model = LogisticRegression(max_iter=1000)
+            self.model = LogisticRegression(max_iter=1000,
+                                    multi_class='multinomial', 
+                                    solver='lbfgs')
             self.model.fit(X_train_selected, y_train)
 
 
         else:
-            self.model = LogisticRegression(max_iter=1000)
+            self.model = LogisticRegression(max_iter=1000,
+                                            multi_class='ovr', 
+                                            solver='lbfgs')
             self.model.fit(X_train, y_train)
             self.selected_features = X_train.columns
             
