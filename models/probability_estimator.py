@@ -4,24 +4,24 @@ from typing import Any, Union, Optional
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import SequentialFeatureSelector
 from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import log_loss
 from models.models import PlayerCNN, ZIPoisson
 from dataset.torch_dataset import PlayerDataset
 from data import utils
 from tqdm import tqdm
 
-from data.utils import _normalize_features
+from data.utils import _cut_features
 
 from itertools import chain
 import torch
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import torch.optim as optim
 from torch import nn
 import torch.nn.functional as F
 from models.utils import train_routine
 from models.models import PlayerCNN
 import numpy as np
-from venn_abers import VennAbersCalibrator
 
 
 class ProbabilityEstimator:
@@ -134,13 +134,14 @@ class ProbabilityEstimator:
 
         if self.model_type == "class":
 
-            data_to_predict = self.features[self.selected_features]
+            # data_to_predict = self.features[self.selected_features]
 
             data_to_predict = (
                 self.features.drop(
                     self.config_cols + ["league", "lookback"], axis=1
                 )
             )
+
             config = self.features[self.config_cols].reset_index(drop=True)
             predictions = self.model.predict_proba(data_to_predict)
             pred_df = pd.DataFrame(
@@ -289,23 +290,45 @@ class ProbabilityEstimator:
         feat_group = ["last_cols", "venue", "general", "momentum", "elo"] if self.version != 3 else ["last_cols", "player_ratings", "venue", "general", "momentum", "elo"]
         print(feat_group)
 
-        master_df = _normalize_features(
+        master_df = _cut_features(
             master_df,
             self.use_diff,
-            self.normalize,
             True if self.version == 3 else False,
+            self.normalize,
             self.lookback,
             feat_group,
         )
 
-        self.training_data = master_df[
+        train = master_df[
             (~master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
         ]
+        train_config = train[self.config_cols + ['league', 'lookback']]
+        train_data = train.drop(self.config_cols + ['league', 'lookback'], axis=1)
+ 
 
-        if self.features is None:
-            self.features = master_df[
-                (master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
-            ]
+        feat = master_df[
+            (master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
+        ]
+        test_config = feat[self.config_cols + ['league', 'lookback']]
+        features = feat.drop(self.config_cols + ['league', 'lookback'], axis=1)
+
+        if self.normalize:
+            if self.use_diff:
+                scaler = MinMaxScaler(feature_range=(-1, 1))
+            else:
+                scaler = MinMaxScaler(feature_range=(0, 1))
+
+            train_data_scaled = scaler.fit_transform(train_data)
+            self.training_data = pd.concat([train_config, pd.DataFrame(train_data_scaled, columns=train_data.columns, index=train_data.index)], axis=1)
+
+            features_scaled = scaler.transform(features)
+            self.features = pd.concat([test_config, pd.DataFrame(features_scaled, columns=features.columns, index=features.index)], axis=1)
+
+        else:
+            self.training_data = train
+            self.features = feat
+
+        
 
     def _get_player_features(self):
 
