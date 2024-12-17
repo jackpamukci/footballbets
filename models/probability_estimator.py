@@ -31,6 +31,7 @@ class ProbabilityEstimator:
         testing_data: pd.DataFrame = None,
         use_diff: bool = True,
         betting_seasons: list = [2324],
+        training_seasons: list = [1718, 1819, 1920, 2021, 2122, 2223],
         version: int = 1,
         normalize: bool = False,
         lookback: int = 6,
@@ -52,6 +53,7 @@ class ProbabilityEstimator:
         self.env_path = env_path
         self.s3 = utils._get_s3_agent(self.env_path)
         self.betting_seasons = betting_seasons
+        self.training_seasons = training_seasons
         self.version = version
 
         if all(market not in ["1x2", "OU", "BTTS"] for market in self.markets):
@@ -140,7 +142,7 @@ class ProbabilityEstimator:
                 self.features.drop(
                     self.config_cols + ["league", "lookback"], axis=1
                 )
-            )
+            )[self.selected_features]
 
             config = self.features[self.config_cols].reset_index(drop=True)
             predictions = self.model.predict_proba(data_to_predict)
@@ -300,7 +302,7 @@ class ProbabilityEstimator:
         )
 
         train = master_df[
-            (~master_df["season"].isin(self.betting_seasons)) & (master_df["lookback"] != 1)
+            (master_df["season"].isin(self.training_seasons)) & (master_df["lookback"] != 1)
         ]
         train_config = train[self.config_cols + ['league', 'lookback']]
         train_data = train.drop(self.config_cols + ['league', 'lookback'], axis=1)
@@ -415,8 +417,10 @@ class ProbabilityEstimator:
                                                     cv=5)
             sfs.fit(X_train, y_train)
 
+            selected_feature_mask = sfs.get_support()
+            self.selected_features = X_train.columns[selected_feature_mask]
+
             X_train_selected = sfs.transform(X_train)
-            self.selected_features = X_train_selected.columns
 
             self.model = LogisticRegression(max_iter=1000,
                                     multi_class='multinomial', 
