@@ -278,7 +278,6 @@ class ProbabilityEstimator:
         self.bets = pd.DataFrame(all_bets_list)
 
     def _get_team_features(self):
-
         key = f"season_pickles/team_feats_{self.lookback}.csv" if self.version == 1 else f"season_pickles{self.version}/team_feats_{self.lookback}.csv"
 
         mastercsv = self.s3.get_object(
