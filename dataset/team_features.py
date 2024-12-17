@@ -18,7 +18,7 @@ class TeamFeatures:
         use_diff: bool = False,
         use_dist: bool = False,
         normalize: bool = True,
-        feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
+        feat_group: list = ["last_cols", "player_rating", "momentum", "venue", "general", "elo"],
     ):
 
         self.met_col_list = None
@@ -37,11 +37,13 @@ class TeamFeatures:
         self.metrics_calc = False
 
         features_df = self.season.team_stats.copy()
-        player_ratings = self.season.player_ratings.copy()
-        
+
+        if 'DEF' not in self.season.player_ratings.position.unique():
+            self.season.player_ratings = _fix_positions(self.season.player_ratings)
+                
         features_df = self._process_features(features_df)
-        self.features = self._calculate_lineup_strength(features_df, player_ratings)
-        # self.features = features_df
+        # self.features = self._calculate_lineup_strength(features_df, player_ratings)
+        self.features = features_df
 
     def _process_features(self, features_df):
 
@@ -76,7 +78,18 @@ class TeamFeatures:
                 "vaep_conceded",
                 "ppda",
                 "min_allocation",
-                "player_rating",
+            ]
+        ]
+
+        player_rat = [
+            f"last_{self.lookback}_{x}_{y}"
+            for x in ["home", "away"]
+            for y in [
+                "pr_gen",
+                "pr_gk",
+                "pr_def",
+                "pr_mid",
+                "pr_fw"
             ]
         ]
 
@@ -108,13 +121,20 @@ class TeamFeatures:
         ]
 
         elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
-        config = feats[config_cols]
+
+
+        last_config = [x for x in config_cols]
+        if self.use_dist:
+            last_config = [x for x in config_cols] + ['distance']
+
+        config = feats[last_config]
 
         cols_dict = {
             "last_cols": last_cols,
             "momentum": momentum,
             "venue": venue,
             "general": general,
+            "player_rating":player_rat,
             "elo": elo,
         }
 
@@ -124,7 +144,20 @@ class TeamFeatures:
                 feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
                 - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
                 columns=[
-                    f"venue_diff_{x}"
+                    f"lookback_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[2:])
+                        for x in last_cols
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
+            )
+
+            player_rat_diff = pd.DataFrame(
+                feats[[x for x in player_rat if x.split("_")[2] == "home"]].values
+                - feats[[x for x in player_rat if x.split("_")[2] == "away"]].values,
+                columns=[
+                    f"rating_diff_{x}"
                     for x in [
                         "_".join(x.split("_")[2:])
                         for x in last_cols
@@ -137,7 +170,7 @@ class TeamFeatures:
                 feats[[x for x in momentum if x.split("_")[2] == "home"]].values
                 - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
                 columns=[
-                    f"venue_diff_{x}"
+                    f"momentum_diff_{x}"
                     for x in [
                         "_".join(x.split("_")[2:])
                         for x in momentum
@@ -187,6 +220,7 @@ class TeamFeatures:
 
             diff_dict = {
                 "last_cols": last_cols_diff,
+                "player_rating": player_rat_diff,
                 "momentum": momentum_diff,
                 "venue": venue_diff,
                 "general": general_diff,
@@ -395,6 +429,9 @@ class TeamFeatures:
         return feats
 
     def _calculate_metric_features(self, feats):
+        new_ratings = self._get_player_ratings(self.season.player_ratings)
+        player_groups = new_ratings.groupby('game')
+
         team_games_cache = {}
         for team in feats["home_team"].unique():
             team_games_cache[team] = feats[
@@ -405,6 +442,8 @@ class TeamFeatures:
         feats["lookback"] = 0
 
         for i, row in tqdm(feats.iterrows(), total=feats.shape[0]):
+            player_group = player_groups.get_group(row.game)
+
             for ind in ["home", "away"]:
                 team = row[f"{ind}_team"]
                 team_games = team_games_cache[team].loc[:i].iloc[:-1]
@@ -440,6 +479,12 @@ class TeamFeatures:
                             value = self._calculate_slope_metrics(
                                 lookback_matches, metric, row, ind
                             )
+                        # TODO
+                        elif metric == 'player_rating':
+                            
+                            rating_feats = self._calculate_player_rating(lookback_matches, player_group, row, ind)
+                            rating_cols = [f"last_{self.lookback}_{ind}_{x}" for x in ["pr_gen", "pr_gk", "pr_def", "pr_mid", "pr_fw"]]
+                            feats.loc[i, rating_cols] = rating_feats
                         else:
                             value = self._calculate_last_performances(
                                 lookback_matches, metric, row, ind
@@ -557,6 +602,40 @@ class TeamFeatures:
 
         return statistics.mean(metric_perf)
 
+    # TODO: define calculate player line up method to get not only lookback player rating but also lineup strengths
+    def _calculate_player_rating(self, lookback_matches, match_players, row, ind):
+
+        # for i, row in features.iterrows():
+        starting11 = match_players[match_players['position'] != 'SUB']
+        team_players = starting11[starting11['h_a'] == ind]
+
+        gen_max = []
+        gk_max = []
+        def_max = []
+        mid_max = []
+        fw_max = []
+
+        # print('match to predict: ', row.game)
+
+        for i, lb_row in lookback_matches.iterrows():
+            indicator = (
+                "home" if row[f"{ind}_team"] == lb_row.home_team else "away"
+            )
+
+            # print(f'lookback {i}: ', lb_row.game)
+
+            gen_max.append(lb_row[f"{indicator}_player_rating"])
+            gk_max.append(lb_row[f"{indicator}_gk_player_rating"])
+            def_max.append(lb_row[f"{indicator}_def_player_rating"])
+            mid_max.append(lb_row[f"{indicator}_mid_player_rating"])
+            fw_max.append(lb_row[f"{indicator}_for_player_rating"])
+
+        return [team_players.rating.mean() / max(gen_max),
+        team_players[team_players['position'] == 'GK'].rating.mean() / max(gk_max),
+        team_players[team_players['position'] == 'DEF'].rating.mean() / max(def_max),
+        team_players[team_players['position'] == 'MID'].rating.mean() / max(mid_max),
+        team_players[team_players['position'] == 'FOR'].rating.mean() / max(fw_max)]
+
     def _get_vaep_shots_target(self, feats):
         match_events = self.season.events.groupby("fixture")
 
@@ -615,43 +694,19 @@ class TeamFeatures:
 
         for i, row in feats.iterrows():
             ratings = ratings_groups.get_group(row.game)
-            home_ratings = ratings[ratings["h_a"] == "home"].rating.mean()
-            away_ratings = ratings[ratings["h_a"] == "away"].rating.mean()
-            feats.at[i, "home_player_rating"] = home_ratings
-            feats.at[i, "away_player_rating"] = away_ratings
+
+            for ind in ['home', 'away']:
+                team_ratings = ratings[ratings["h_a"] == ind]
+
+                feats.at[i, f"{ind}_player_rating"] = team_ratings.rating.mean()
+
+                feats.at[i, f"{ind}_gk_player_rating"] = team_ratings[team_ratings['position'] == 'GK'].rating.mean()
+                feats.at[i, f"{ind}_def_player_rating"] = team_ratings[team_ratings['position'] == 'DEF'].rating.mean()
+                feats.at[i, f"{ind}_mid_player_rating"] = team_ratings[team_ratings['position'] == 'MID'].rating.mean()
+                feats.at[i, f"{ind}_for_player_rating"] = team_ratings[team_ratings['position'] == 'FOR'].rating.mean()
 
         return feats
     
-    def _calculate_lineup_strength(self, features, player_ratings):
-        new_ratings = self._get_player_ratings(player_ratings)
-
-        if 'DEF' not in new_ratings.position.unique():
-            new_ratings = _fix_positions(new_ratings)
-
-        player_groups = player_ratings.groupby('game')
-
-        for i, row in features.iterrows():
-            match_players = player_groups.get_group(row.game)
-            starting11 = match_players[match_players['position'] != 'SUB']
-
-            home_team = starting11[starting11['team'] == row.home_team]
-            home_team_lookback = row.last_6_home_player_rating
-
-            away_team = starting11[starting11['team'] == row.away_team]
-            away_team_lookback = row.last_6_away_player_rating
-
-            if home_team_lookback == 0 or away_team_lookback == 0:
-                home_lineup_rating = 0 
-                away_lineup_rating = 0
-            else:
-                home_lineup_rating = home_team.lookback_rating.mean() / home_team_lookback  
-                away_lineup_rating = away_team.lookback_rating.mean() / away_team_lookback
-
-            features.at[i, 'home_lineup'] = home_lineup_rating
-            features.at[i, 'away_lineup'] = away_lineup_rating
-
-        return features
-
     def _get_season_points(self, schedule):
         schedule = schedule.copy()
         teams = schedule[schedule["league"] == self.season.league_id].home_team.unique()
@@ -692,15 +747,12 @@ class TeamFeatures:
         player_performances = features.groupby("player")
 
         for fixture, data in tqdm(match_fixtures):
-            sched_fix = self.season.schedule[
-                self.season.schedule["game"] == fixture
-            ].iloc[0]
 
             for i, row in data.iterrows():
 
                 player_perf = player_performances.get_group(row.player)
                 position = player_perf.index.get_loc(i)
-                lookback_table = player_perf.iloc[max(0, position - 6) : position]
+                lookback_table = player_perf.iloc[max(0, position - self.lookback) : position]
 
                 # assume that a player who hasn't made an appearance yet will perform below average
                 # or esssentially 5.75 
@@ -748,7 +800,15 @@ cols_to_drop = [
     "home_min_allocation",
     "away_min_allocation",
     "home_player_rating",
+    "home_gk_player_rating",
+    "home_def_player_rating",
+    "home_mid_player_rating",
+    "home_for_player_rating",
     "away_player_rating",
+    "away_gk_player_rating",
+    "away_def_player_rating",
+    "away_mid_player_rating",
+    "away_for_player_rating",
 ]
 
 elo_metrics = [

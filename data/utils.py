@@ -258,12 +258,13 @@ def _fix_positions(features_df):
     return features_df
 
 
-def _normalize_features(
+def _cut_features(
     feats,
     use_diff: bool = False,
+    use_dist: bool = False,
     normalize: bool = False,
     lookback: int = 4,
-    feat_group: list = ["last_cols", "momentum", "venue", "general", "elo"],
+    feat_group: list = ["last_cols", "player_ratings", "momentum", "venue", "general", "elo"],
 ):
 
     elo_metrics = [
@@ -303,9 +304,20 @@ def _normalize_features(
             "vaep_conceded",
             "ppda",
             "min_allocation",
-            "player_rating",
         ]
     ]
+
+    player_rat = [
+            f"last_{lookback}_{x}_{y}"
+            for x in ["home", "away"]
+            for y in [
+                "pr_gen",
+                "pr_gk",
+                "pr_def",
+                "pr_mid",
+                "pr_fw"
+            ]
+        ]
 
     momentum = [
         f"last_{lookback}_{x}_{y}_{z}"
@@ -328,13 +340,11 @@ def _normalize_features(
     ]
     general = [f"{x}_{y}" for x in ["home", "away"] for y in ["rest", "tot_points"]]
 
-    col_list = [
-        item
-        for sublist in [x for x in [last_cols, momentum, venue, general]]
-        for item in sublist
-    ]
-
     elo = [f"{x}_{y}" for x in ["home", "away"] for y in elo_metrics]
+
+    if use_dist:
+        config_cols.append('distance')
+
     config = feats[config_cols]
 
     cols_dict = {
@@ -345,15 +355,17 @@ def _normalize_features(
         "elo": elo,
     }
 
-    # cols = self.feat_group
+    if "player_ratings" in feat_group:
+        cols_dict["player_ratings"] = player_rat
+
     if use_diff:
         last_cols_diff = pd.DataFrame(
             feats[[x for x in last_cols if x.split("_")[2] == "home"]].values
             - feats[[x for x in last_cols if x.split("_")[2] == "away"]].values,
             columns=[
-                f"venue_diff_{x}"
+                f"lookback_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[3:])
                     for x in last_cols
                     if x.split("_")[2] == "home"
                 ]
@@ -364,9 +376,9 @@ def _normalize_features(
             feats[[x for x in momentum if x.split("_")[2] == "home"]].values
             - feats[[x for x in momentum if x.split("_")[2] == "away"]].values,
             columns=[
-                f"venue_diff_{x}"
+                f"momentum_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[3:])
                     for x in momentum
                     if x.split("_")[2] == "home"
                 ]
@@ -392,7 +404,7 @@ def _normalize_features(
             columns=[
                 f"general_diff_{x}"
                 for x in [
-                    "_".join(x.split("_")[2:])
+                    "_".join(x.split("_")[1:])
                     for x in general
                     if x.split("_")[0] == "home"
                 ]
@@ -410,47 +422,90 @@ def _normalize_features(
             ],
         )
 
-        diff_dict = {
-            "last_cols": last_cols_diff,
-            "momentum": momentum_diff,
-            "venue": venue_diff,
-            "general": general_diff,
-            "elo": elo_diff,
-        }
+        if "player_ratings" in feat_group:
 
-        diff_data = pd.concat([diff_dict[x] for x in feat_group], axis=1)
-
-        met_col_list = diff_data.columns
-        features = pd.concat([config["matchday"], diff_data], axis=1)
-
-        if normalize:
-
-            features = (
-                features.groupby("matchday", group_keys=False)
-                .apply(lambda group: _scale_group(group, met_col_list))
-                .drop("matchday", axis=1)
+            player_ratings_diff = pd.DataFrame(
+                feats[[x for x in player_rat if x.split("_")[2] == "home"]].values
+                - feats[[x for x in player_rat if x.split("_")[2] == "away"]].values,
+                columns=[
+                    f"ratings_diff_{x}"
+                    for x in [
+                        "_".join(x.split("_")[3:])
+                        for x in player_rat
+                        if x.split("_")[2] == "home"
+                    ]
+                ],
             )
 
-        return pd.concat([config, features], axis=1)
+            diff_dict = {
+                "last_cols": last_cols_diff,
+                "player_ratings" : player_ratings_diff,
+                "momentum": momentum_diff,
+                "venue": venue_diff,
+                "general": general_diff,
+                "elo": elo_diff,
+            }
+        else:
+            diff_dict = {
+                "last_cols": last_cols_diff,
+                "momentum": momentum_diff,
+                "venue": venue_diff,
+                "general": general_diff,
+                "elo": elo_diff,
+            }
+
+        dataframes_list = [diff_dict[x] for x in feat_group]
+
+        diff_data = pd.concat(dataframes_list, axis=1)
+
+        met_col_list = diff_data.columns
+        
+        features = pd.concat([config["matchday"], diff_data], axis=1)
+
+        # MANDATORY NORMALIZING OF ELO
+        # features = (
+        #         features.groupby("matchday", group_keys=False)
+        #         .apply(lambda group: _scale_group(group, elo_diff.columns, use_diff))
+        #     )
+
+        # if normalize:
+
+        #     features = (
+        #         features.groupby("matchday", group_keys=False)
+        #         .apply(lambda group: _scale_group(group, met_col_list, use_diff))
+        #         .drop("matchday", axis=1)
+        #     )
+
+        
+
+        return pd.concat([config, diff_data], axis=1)
 
     met_col_list = [item for x in feat_group for item in cols_dict[x]]
 
-    if normalize:
-        features = feats[met_col_list + ["matchday"]]
+    # TODO: assign features variable as feats[config + met_col_list]
+    # features = (
+    #         feats.groupby("matchday", group_keys=False)
+    #         .apply(lambda group: _scale_group(group, elo, use_diff))
+    #     )
 
-        features = (
-            features.groupby("matchday", group_keys=False)
-            .apply(lambda group: _scale_group(group, met_col_list))
-            .drop("matchday", axis=1)
-        )
+    # if normalize:
+    #     features = features[met_col_list + ["matchday"]]
 
-        return pd.concat([config, features], axis=1)
+    #     features = (
+    #         features.groupby("matchday", group_keys=False)
+    #         .apply(lambda group: _scale_group(group, met_col_list, use_diff))
+    #         .drop("matchday", axis=1)
+    #     )
+
+    #     return pd.concat([config, features], axis=1)
 
     return pd.concat([config, feats[met_col_list]], axis=1)
 
 
-def _scale_group(group, met_col_list):
-    scaler = MinMaxScaler()
+def _scale_group(group, met_col_list, diff):
+
+    scaler = MinMaxScaler(feature_range=(-1, 1)) if diff else MinMaxScaler()
+
     group[met_col_list] = scaler.fit_transform(group[met_col_list])
     return group
 
