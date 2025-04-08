@@ -606,35 +606,55 @@ class TeamFeatures:
     def _calculate_player_rating(self, lookback_matches, match_players, row, ind):
 
         # for i, row in features.iterrows():
-        starting11 = match_players[match_players['position'] != 'SUB']
-        team_players = starting11[starting11['h_a'] == ind]
+        # starting11 = match_players[match_players['position'] != 'SUB']
+        # team_players = starting11[starting11['h_a'] == ind]
 
-        gen_max = []
-        gk_max = []
-        def_max = []
-        mid_max = []
-        fw_max = []
+        denom_ratings = self.season.player_ratings[(self.season.player_ratings['game'].isin(lookback_matches.game.unique())) & (self.season.player_ratings['team'] == row[f'{ind}_team']) & (self.season.player_ratings['position'] != 'SUB')]
+
+        gen_denom = denom_ratings.groupby('game').rating.mean().mean()
+        gk_denom = denom_ratings[denom_ratings['position'] == 'GK'].groupby('game').rating.mean().mean()
+        def_denom = denom_ratings[denom_ratings['position'] == 'DEF'].groupby('game').rating.mean().mean()
+        mid_denom = denom_ratings[denom_ratings['position'] == 'MID'].groupby('game').rating.mean().mean()
+        fw_denom = denom_ratings[denom_ratings['position'] == 'FOR'].groupby('game').rating.mean().mean()
+
+        # denominator = ratings_by_match.rating.mean().max()
+        num_ratings = self.season.player_ratings[(self.season.player_ratings['game'] == row.game) & (self.season.player_ratings['team'] == row[f'{ind}_team']) & (self.season.player_ratings['position'] != 'SUB')]
+
+        gen_num = num_ratings.lookback_rating.mean()
+        gk_num = num_ratings[num_ratings['position'] == 'GK'].lookback_rating.mean()
+        def_num = num_ratings[num_ratings['position'] == 'DEF'].lookback_rating.mean()
+        mid_num = num_ratings[num_ratings['position'] == 'MID'].lookback_rating.mean()
+        fw_num = num_ratings[num_ratings['position'] == 'FOR'].lookback_rating.mean()
+
+        # gk_max = []
+        # def_max = []
+        # mid_max = []
+        # fw_max = []
 
         # print('match to predict: ', row.game)
 
-        for i, lb_row in lookback_matches.iterrows():
-            indicator = (
-                "home" if row[f"{ind}_team"] == lb_row.home_team else "away"
-            )
+        # for i, lb_row in lookback_matches.iterrows():
+        #     indicator = (
+        #         "home" if row[f"{ind}_team"] == lb_row.home_team else "away"
+        #     )
 
-            # print(f'lookback {i}: ', lb_row.game)
+        #     # print(f'lookback {i}: ', lb_row.game)
 
-            gen_max.append(lb_row[f"{indicator}_player_rating"])
-            gk_max.append(lb_row[f"{indicator}_gk_player_rating"])
-            def_max.append(lb_row[f"{indicator}_def_player_rating"])
-            mid_max.append(lb_row[f"{indicator}_mid_player_rating"])
-            fw_max.append(lb_row[f"{indicator}_for_player_rating"])
+        #     gen_max.append(lb_row[f"{indicator}_player_rating"])
+        #     # gk_max.append(lb_row[f"{indicator}_gk_player_rating"])
+        #     # def_max.append(lb_row[f"{indicator}_def_player_rating"])
+        #     # mid_max.append(lb_row[f"{indicator}_mid_player_rating"])
+        #     # fw_max.append(lb_row[f"{indicator}_for_player_rating"])
 
-        return [team_players.rating.mean() / max(gen_max),
+        # gen_rating = numerator / denominator
+        return [gen_num / gen_denom, gk_num / gk_denom, 
+                def_num / def_denom, mid_num / mid_denom, 
+                fw_num / fw_denom]
+    ''',
         team_players[team_players['position'] == 'GK'].rating.mean() / max(gk_max),
         team_players[team_players['position'] == 'DEF'].rating.mean() / max(def_max),
         team_players[team_players['position'] == 'MID'].rating.mean() / max(mid_max),
-        team_players[team_players['position'] == 'FOR'].rating.mean() / max(fw_max)]
+        team_players[team_players['position'] == 'FOR'].rating.mean() / max(fw_max)]'''
 
     def _get_vaep_shots_target(self, feats):
         match_events = self.season.events.groupby("fixture")
